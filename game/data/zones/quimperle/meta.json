@@ -57,12 +57,12 @@
    "parc": 4549
   },
   "roads": {
-   "aucune": 2142820,
+   "aucune": 2240176,
    "voie_rapide": 9655,
    "principale": 14711,
    "secondaire": 91821,
-   "rue": 233621,
-   "chemin": 64433,
+   "rue": 134999,
+   "chemin": 65699,
    "rail": 2939
   },
   "pois": 3313,
