@@ -346,17 +346,23 @@ func _store_container() -> void:
 		_cont_save.call(_cont_inv.to_data())
 
 
+## Près d'un feu allumé : faire bouillir l'eau, cuire ou réchauffer.
+func _on_cook_item(index: int) -> void:
+	var s: Dictionary = inv.slots[index]
+	if s.is_empty() or actions.near_fire(player.position, 3).x < 0:
+		hud.show_message("Il faut un feu allumé tout près.")
+		return
+	var id: String = s["id"]
+	inv.remove(id)
+	inv.add("bouteille_bouillie" if id == "bouteille_eau" else "repas")
+	hud.show_message("L'eau a bouilli : elle est potable." if id == "bouteille_eau" else "Repas cuit.")
+
+
 func _on_use_item(index: int) -> void:
 	var s: Dictionary = inv.slots[index]
 	if s.is_empty():
 		return
 	var id: String = s["id"]
-	# Près d'un feu : cuisson
-	if actions.near_fire(player.position, 2).x >= 0 and id in ["bouteille_eau", "champignon", "conserve"]:
-		inv.remove(id)
-		inv.add("bouteille_bouillie" if id == "bouteille_eau" else "repas")
-		hud.show_message("Eau bouillie." if id == "bouteille_eau" else "Repas cuit.")
-		return
 	var it := Items.info(id)
 	match String(it.get("utiliser", "")):
 		"Manger", "Manger cru", "Boire", "Se soigner", "Prendre":
@@ -567,6 +573,8 @@ func _build_ui() -> void:
 	bag = BagPanel.new()
 	ui.add_child(bag)
 	bag.use_item.connect(_on_use_item)
+	bag.cook_item.connect(_on_cook_item)
+	bag.fire_check = func(): return actions.near_fire(player.position, 3).x >= 0
 	bag.drop_item.connect(_on_drop_item)
 	bag.store_item.connect(_on_store_item)
 	bag.take_item.connect(_on_take_item)
@@ -622,6 +630,7 @@ func _toggle_bag() -> void:
 
 func _open_map() -> void:
 	map_view.player_cell = player.position / Tiles.SIZE
+	map_view.mods = mods
 	map_view.open()
 
 

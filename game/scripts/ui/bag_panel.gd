@@ -5,6 +5,7 @@ extends Control
 ## propose alors : utiliser, jeter, ranger, prendre (un seul ou toute la pile).
 
 signal use_item(index: int)
+signal cook_item(index: int)
 signal drop_item(index: int, all: bool)
 signal store_item(index: int, all: bool)
 signal take_item(index: int, all: bool)
@@ -22,6 +23,9 @@ var _right: VBoxContainer
 var _actions: HBoxContainer
 var _sel_label: Label
 var _hint: Label
+var fire_check: Callable    ## renvoie vrai si un feu allumé est à portée
+
+const COOK := {"bouteille_eau": "Faire bouillir", "champignon": "Cuire", "conserve": "Réchauffer"}
 
 
 func _ready() -> void:
@@ -167,6 +171,11 @@ func _build_actions() -> void:
 	var use := String(Items.info(id).get("utiliser", ""))
 	if use != "" and container == null:
 		_actions.add_child(_btn(use, func(): use_item.emit(i)))
+	if container == null and COOK.has(id):
+		if fire_check.is_valid() and fire_check.call():
+			_actions.add_child(_btn(COOK[id], func(): cook_item.emit(i)))
+		elif id == "bouteille_eau":
+			_sel_label.text += "  (à faire bouillir près d'un feu allumé)"
 	if container != null:
 		_actions.add_child(_btn("Ranger", func(): store_item.emit(i, false)))
 		if n > 1:

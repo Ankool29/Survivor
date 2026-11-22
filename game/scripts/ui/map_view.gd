@@ -6,6 +6,7 @@ extends Control
 const ZOOM_MAX := 24.0
 
 var zone: ZoneData
+var mods: WorldMods            ## constructions du joueur (abris, feux, coffres)
 var player_cell := Vector2.ZERO
 var zoom := 1.0
 var center := Vector2.ZERO          ## centre de la vue, en cases
@@ -134,6 +135,7 @@ func _draw() -> void:
 		draw_circle(pos, 2.5, Color.WHITE)
 		_label(pos + Vector2(4, -3), p["name"], fs, Color.WHITE)
 	# Joueur
+	_draw_structures()
 	var me := _to_screen(player_cell)
 	draw_circle(me, 8, Color(0, 0, 0, 0.6))
 	draw_circle(me, 6, Color8(255, 80, 60))
@@ -157,3 +159,31 @@ func _draw() -> void:
 func _label(pos: Vector2, text: String, fs: int, col: Color) -> void:
 	draw_string_outline(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0, 0, 0, 0.85))
 	draw_string(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+
+
+## Abris, feux et coffres construits : toujours visibles, nommés en zoomant.
+func _draw_structures() -> void:
+	if mods == null:
+		return
+	for k in mods.structures:
+		var st: Dictionary = mods.structures[k]
+		var t := String(st.get("type", ""))
+		var pos := _to_screen(Vector2(WorldMods.cell_of(k)) + Vector2(0.5, 0.5))
+		if not Rect2(Vector2(-20, -20), size + Vector2(40, 40)).has_point(pos):
+			continue
+		match t:
+			"abri":
+				var tri := PackedVector2Array([pos + Vector2(0, -11), pos + Vector2(10, 7), pos + Vector2(-10, 7)])
+				draw_colored_polygon(tri, Color8(150, 105, 55))
+				draw_polyline(tri + PackedVector2Array([tri[0]]), Color.BLACK, 2.0)
+				draw_line(pos + Vector2(0, -2), pos + Vector2(0, 7), Color.BLACK, 2.0)
+				if zoom >= 3.0:
+					_label(pos + Vector2(13, 5), "Abri", 13, Color8(255, 225, 170))
+			"feu":
+				if zoom >= 3.0:
+					draw_circle(pos, 5, Color.BLACK)
+					draw_circle(pos, 3.5, Color8(255, 140, 40) if float(st.get("feu", 0)) > 0.0 else Color8(120, 110, 100))
+			"coffre":
+				if zoom >= 3.0:
+					draw_rect(Rect2(pos - Vector2(5, 4), Vector2(10, 8)), Color8(120, 80, 40))
+					draw_rect(Rect2(pos - Vector2(5, 4), Vector2(10, 8)), Color.BLACK, false, 1.5)

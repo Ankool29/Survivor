@@ -15,3 +15,6 @@ Défauts connus, intégrés provisoirement. Mis à jour au fil de l'eau.
 | 9 | Sols | Sol de forêt de résineux d'un orange un peu vif | mineur | ouvert |
 | 10 | Bâtiments | Trop en ruine. Direction voulue : bâtiments quasiment intacts (toits, murs entiers, portes et fenêtres), la végétation reprenant légèrement le dessus ; toit masqué quand on entre | moyen | corrigé (85 % intacts, toits, lierre) |
 | 11 | Bâtiments | Bâtiments très en biais (plus de 25°) encore en escalier ; formes d'OpenStreetMap parfois complexes (L, cours) | mineur | ouvert |
+| 12 | Eau | Faire bouillir l'eau non traitée n'était pas visible : bouton « Faire bouillir » dans le sac près d'un feu allumé (3 cases), sinon une indication | moyen | corrigé |
+| 13 | Carte | Les abris construits (et, en zoomant, feux et coffres) apparaissent sur la carte | moyen | corrigé |
+| 14 | Bâtiments | Entrées difficiles à trouver : entaille dans le toit au-dessus de la porte, seuil de pierre et bout de chemin devant | moyen | corrigé |

@@ -186,6 +186,14 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 	var b := zone.bb_at(x, y)
 	var i := ly * CHUNK + lx
 	if b == 0:
+		# devant une porte : un seuil de pierre puis un bout de chemin, pour la repérer
+		if zone.r_at(x, y) == 0 and not zone.is_water(x, y):
+			var step := _door_step(x, y)
+			if step > 0:
+				_put(c, lx, ly, Tiles.G_BETON if step == 1 else Tiles.G_CHEMIN, hash_cell(x, y) & 3)
+				c.decor[i] = -1
+				c.flags[i] = 0
+				return
 		# lierre et herbes au pied des façades (sous un mur, dehors)
 		if c.decor[i] < 0 and zone.bb_at(x, y - 1) == 2 and zone.r_at(x, y) == 0 and not zone.is_water(x, y):
 			if (hash_cell(x, y) >> 5) % 100 < 22:
@@ -227,6 +235,16 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 		_deco(c, lx, ly, Tiles.D_GRAVATS)
 	elif a < 0.028:
 		_deco(c, lx, ly, Tiles.D_BUISSON)
+
+
+## 1 si la case touche une porte, 2 si elle est à deux cases dans l'axe, 0 sinon.
+func _door_step(x: int, y: int) -> int:
+	for d in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
+		if zone.bb_at(x + d.x, y + d.y) == 4:
+			return 1
+		if zone.bb_at(x + 2 * d.x, y + 2 * d.y) == 4 and zone.bb_at(x + d.x, y + d.y) == 0:
+			return 2
+	return 0
 
 
 func _near_door(x: int, y: int) -> bool:

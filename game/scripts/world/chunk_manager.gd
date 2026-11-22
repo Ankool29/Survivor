@@ -367,7 +367,8 @@ func _compute_roof(x0: int, y0: int) -> Array:
 	for ly in CHUNK:
 		for lx in CHUNK:
 			var r := zone.roof_at(x0 + lx, y0 + ly)
-			if r > 0:
+			# entaille dans le toit au-dessus de la porte, pour la repérer
+			if r > 0 and zone.bb_at(x0 + lx, y0 + ly) != 4:
 				out[r - 1].append_array([x0 + lx, y0 + ly, 15])
 	return out
 
