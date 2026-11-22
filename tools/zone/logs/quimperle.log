@@ -1,4 +1,20 @@
-== Sun Nov 22 11:30:55 UTC 2026 : zone quimperle
-Extrait OSM : https://download.geofabrik.de/europe/france/bretagne-latest.osm.pbf
+== Sun Nov 22 11:34:42 UTC 2026 : zone quimperle
+Extrait OSM : https://download.geofabrik.de/europe/france/bretagne/bretagne-latest.osm.pbf
 Boite : -3.94047,47.60923,-3.16079,48.13380
-curl: (22) The requested URL returned error: 404
+total 323684
+drwxr-xr-x  2 runner runner      4096 Nov 22 11:34 .
+drwxrwxrwt 13 root   root        4096 Nov 22 11:34 ..
+-rw-r--r--  1 runner runner    522378 Nov 22 11:34 index.json
+-rw-r--r--  1 runner runner 330917552 Nov 22 11:35 region.osm.pbf
+total 31352
+drwxr-xr-x  2 runner runner     4096 Nov 22 11:35 .
+drwxrwxrwt 13 root   root       4096 Nov 22 11:34 ..
+-rw-r--r--  1 runner runner 32093241 Nov 22 11:35 zone.osm.pbf
+Relief IGN...
+  IGN : 16 tuiles
+Zone quimperle : 1600 x 1600 cases de 31.25 m
+Lecture OSM : /tmp/src/zone.osm.pbf
+  surfaces 18311, cours d'eau 5249, voies 42128, batiments 296422, lieux 3313, noms 5737
+  relief : IGN RGE ALTI, 2025246 cases renseignees
+Termine : {"terrain": {"mer": 548967, "eau": 70454, "sable": 1707, "prairie": 105911, "champ": 1301810, "foret_feuillus": 120625, "foret_resineux": 33681, "foret_mixte": 185188, "lande": 13850, "marais": 10774, "urbain": 146174, "industriel": 11868, "roche": 3733, "cimetiere": 709, "parc": 4549}, "roads": {"aucune": 2142820, "voie_rapide": 9655, "principale": 14711, "secondaire": 91821, "rue": 233621, "chemin": 64433, "rail": 2939}, "pois": 3313, "places": 5737}
+== termine Sun Nov 22 11:37:05 UTC 2026

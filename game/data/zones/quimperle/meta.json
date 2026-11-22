@@ -1,0 +1,71 @@
+{
+ "name": "quimperle",
+ "title": "Pays de Quimperlé",
+ "width": 1600,
+ "height": 1600,
+ "cells_per_km": 32,
+ "cell_m": 31.25,
+ "crs": "EPSG:2154",
+ "origin_x": 185959.75052203028,
+ "origin_y": 6797692.295990669,
+ "terrain_codes": {
+  "mer": 0,
+  "eau": 1,
+  "sable": 2,
+  "prairie": 3,
+  "champ": 4,
+  "foret_feuillus": 5,
+  "foret_resineux": 6,
+  "foret_mixte": 7,
+  "lande": 8,
+  "marais": 9,
+  "urbain": 10,
+  "industriel": 11,
+  "roche": 12,
+  "cimetiere": 13,
+  "parc": 14
+ },
+ "road_codes": {
+  "aucune": 0,
+  "voie_rapide": 1,
+  "principale": 2,
+  "secondaire": 3,
+  "rue": 4,
+  "chemin": 5,
+  "rail": 6
+ },
+ "sources": [
+  "OpenStreetMap contributors (ODbL)",
+  "IGN RGE ALTI (Licence Ouverte Etalab 2.0)"
+ ],
+ "counts": {
+  "terrain": {
+   "mer": 548967,
+   "eau": 70454,
+   "sable": 1707,
+   "prairie": 105911,
+   "champ": 1301810,
+   "foret_feuillus": 120625,
+   "foret_resineux": 33681,
+   "foret_mixte": 185188,
+   "lande": 13850,
+   "marais": 10774,
+   "urbain": 146174,
+   "industriel": 11868,
+   "roche": 3733,
+   "cimetiere": 709,
+   "parc": 4549
+  },
+  "roads": {
+   "aucune": 2142820,
+   "voie_rapide": 9655,
+   "principale": 14711,
+   "secondaire": 91821,
+   "rue": 233621,
+   "chemin": 64433,
+   "rail": 2939
+  },
+  "pois": 3313,
+  "places": 5737
+ }
+}
