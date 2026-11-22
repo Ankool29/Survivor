@@ -9,7 +9,7 @@ var _font: Font
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_font = ThemeDB.fallback_font
 	visible = false
@@ -51,7 +51,10 @@ func _draw() -> void:
 	var me := r.position + player_cell * k
 	draw_circle(me, 7, Color(0, 0, 0, 0.6))
 	draw_circle(me, 5, Color8(255, 80, 60))
-	var credit: String = "© contributeurs OpenStreetMap (ODbL) · " + (zone.sources[1] if zone.sources.size() > 1 else "")
-	draw_string(_font, Vector2(12, size.y - 10), credit, HORIZONTAL_ALIGNMENT_LEFT, r.position.x - 20, 10, Color(1, 1, 1, 0.6))
+	var lines: Array[String] = ["© contributeurs OpenStreetMap (ODbL)"]
+	if zone.sources.size() > 1:
+		lines.append("Relief : " + String(zone.sources[1]))
+	for i in lines.size():
+		draw_string(_font, Vector2(12, size.y - 10 - 14 * (lines.size() - 1 - i)), lines[i], HORIZONTAL_ALIGNMENT_LEFT, r.position.x - 20, 10, Color(1, 1, 1, 0.6))
 	draw_string(_font, Vector2(12, 24), zone.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color.WHITE)
 	draw_string(_font, Vector2(12, 46), "Toucher pour fermer", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.6))
