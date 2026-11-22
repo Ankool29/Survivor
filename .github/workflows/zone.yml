@@ -1,5 +1,4 @@
 name: Donnees de zone
-# v2
 
 # Fabrique les donnees d'une zone de jeu a partir d'OpenStreetMap et du relief
 # IGN, puis les enregistre dans game/data/zones/<zone>/. Le journal est ecrit
@@ -68,6 +67,7 @@ jobs:
         run: |
           git config user.name "zone-builder"
           git config user.email "zone-builder@users.noreply.github.com"
+          mkdir -p game/data/zones tools/zone/logs
           git add -A game/data/zones tools/zone/logs
           git commit -m "Donnees de zone : $ZONE" || echo "Rien a enregistrer"
           for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done
