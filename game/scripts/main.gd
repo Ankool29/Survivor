@@ -67,6 +67,8 @@ func new_game(s: int) -> void:
 	rng.seed = s
 	for attempt in 400:
 		var cell := Vector2i(rng.randi_range(40, zone.width - 41), rng.randi_range(40, zone.height - 41))
+		if zone.tiled and zone.e_at(cell.x, cell.y) <= 0.5:
+			continue
 		var t := zone.t_at(cell.x, cell.y)
 		if t == ZoneData.T_MER or t == ZoneData.T_EAU:
 			continue
@@ -99,7 +101,7 @@ func _process(delta: float) -> void:
 		Engine.get_frames_per_second(), world.loaded_count(), world.last_gen_ms, world.max_gen_ms,
 		world.last_apply_ms, world.max_apply_ms, int(get_viewport_rect().size.x), int(get_viewport_rect().size.y),
 		"ok" if camera.is_current() else "inactive",
-		player.cell().x, player.cell().y, zone.e_at(player.cell().x, player.cell().y)]
+		player.cell().x, player.cell().y, int(zone.e_at(player.cell().x, player.cell().y))]
 
 
 func _update_place() -> void:

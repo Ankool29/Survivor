@@ -4,6 +4,8 @@
   "center_lat": 47.872,
   "center_lon": -3.549,
   "size_km": 50,
-  "cells_per_km": 32,
+  "cells_per_km": 500,
+  "mode": "reel",
+  "tile": 1024,
   "osm_region": "bretagne"
 }

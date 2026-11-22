@@ -210,9 +210,8 @@ func _cell_base(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 		_put(c, lx, ly, Tiles.G_MER, v)
 		c.flags[i] = F_BLOCK
 		return
-	var zi := y * zone.width + x
-	var t: int = zone.terrain[zi]
-	var road: int = zone.roads[zi]
+	var t: int = zone.t_at(x, y)
+	var road: int = zone.r_at(x, y)
 	var r2 := _patch5(x, y) * 0.8 + float((h >> 2) & 0xFF) / 1280.0
 	var water := t == ZoneData.T_MER or t == ZoneData.T_EAU
 	if road != ZoneData.R_AUCUNE:

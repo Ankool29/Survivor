@@ -83,7 +83,13 @@ def main():
     ap.add_argument("--config", required=True)
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
-    grid = Grid(json.load(open(args.config)))
+    cfg = json.load(open(args.config))
+    if cfg.get("tile"):
+        # zone en tuiles : relief à basse résolution (voir build_tiled.ELEV_STEP)
+        from build_tiled import ELEV_STEP, coarse_grid
+        grid = coarse_grid(cfg, ELEV_STEP)
+    else:
+        grid = Grid(cfg)
     os.makedirs(args.out, exist_ok=True)
     print("Relief IGN...", flush=True)
     if fetch_ign(grid, args.out):

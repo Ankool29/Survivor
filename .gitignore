@@ -5,3 +5,4 @@ __pycache__/
 *.apk
 game/data/zones/test/
 game/data/zones/test_reel/
+game/data/zones/test_tuiles/

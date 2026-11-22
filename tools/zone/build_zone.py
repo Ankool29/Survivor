@@ -344,6 +344,10 @@ def main():
         print("%.5f,%.5f,%.5f,%.5f" % grid.bbox_wgs())
         return
     os.makedirs(args.out, exist_ok=True)
+    if cfg.get("tile"):
+        from build_tiled import build
+        build(cfg, args.src, args.out)
+        return
     log("Zone %s : %d x %d cases de %.2f m" % (cfg["name"], grid.size, grid.size, grid.cell))
 
     osm_files = sorted(glob.glob(os.path.join(args.src, "*.osm.pbf")) + glob.glob(os.path.join(args.src, "*.osm")))

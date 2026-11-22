@@ -41,6 +41,22 @@ var elev: PackedByteArray
 var bld: PackedByteArray        ## bâtiments réels (mode réel) : 1 sol, 2 mur, 3 sol notable
 var real := false               ## échelle réelle (vrais bâtiments) ou compressée
 var cell_m := 31.25
+
+# --- Zone en tuiles (grandes zones à l'échelle réelle)
+var tiled := false
+var tile := 0                   ## côté d'une tuile, en cases
+var tiles_x := 0
+var tiles_y := 0
+var elev_step := 1              ## altitude : une valeur toutes les elev_step cases
+var elev_w := 0
+var elev_h := 0
+var _dir := ""
+var _tiles := {}                ## Vector2i -> [terrain, roads, bld] (PackedByteArray)
+var _tile_age := {}
+var _clock := 0
+var _mutex := Mutex.new()
+const MAX_TILES := 12
+const EMPTY_TILE := []
 var pois: Array = []
 var places: Array = []
 var sources: Array = []
@@ -64,6 +80,21 @@ static func load_zone(zone_name: String) -> ZoneData:
 	var n := z.width * z.height
 	z.real = meta.get("mode", "") == "reel"
 	z.cell_m = float(meta.get("cell_m", 31.25))
+	z._dir = dir
+	if meta.has("tile"):
+		z.tiled = true
+		z.tile = int(meta["tile"])
+		z.tiles_x = int(meta["tiles_x"])
+		z.tiles_y = int(meta["tiles_y"])
+		z.elev_step = int(meta["elev_step"])
+		z.elev_w = int(meta["elev_w"])
+		z.elev_h = int(meta["elev_h"])
+		z.elev = _layer(dir, "elev", z.elev_w * z.elev_h)
+		if z.elev.size() != z.elev_w * z.elev_h:
+			push_error("Relief de zone de taille inattendue")
+			return null
+		z._load_lists(dir)
+		return z
 	z.terrain = _layer(dir, "terrain", n)
 	z.roads = _layer(dir, "roads", n)
 	z.density = _layer(dir, "density", n)
@@ -76,13 +107,57 @@ static func load_zone(zone_name: String) -> ZoneData:
 		if arr.size() != n:
 			push_error("Fichier de zone de taille inattendue")
 			return null
-	var p = JSON.parse_string(FileAccess.get_file_as_string(dir + "pois.json"))
-	z.pois = p if p is Array else []
-	var pl = JSON.parse_string(FileAccess.get_file_as_string(dir + "places.json"))
-	z.places = pl if pl is Array else []
-	if ResourceLoader.exists(dir + "preview.png"):
-		z.map_texture = load(dir + "preview.png")
+	z._load_lists(dir)
 	return z
+
+
+func _load_lists(dir: String) -> void:
+	var p = JSON.parse_string(FileAccess.get_file_as_string(dir + "pois.json"))
+	pois = p if p is Array else []
+	var pl = JSON.parse_string(FileAccess.get_file_as_string(dir + "places.json"))
+	places = pl if pl is Array else []
+	if ResourceLoader.exists(dir + "preview.png"):
+		map_texture = load(dir + "preview.png")
+
+
+## Tuile (tx, ty) : [terrain, voies, bâtiments], chargée au besoin ; [] = mer.
+## Appelé depuis l'image principale et depuis le fil de fabrication.
+func _get_tile(tx: int, ty: int) -> Array:
+	var key := Vector2i(tx, ty)
+	_mutex.lock()
+	_clock += 1
+	var t: Array = _tiles.get(key, EMPTY_TILE)
+	if _tiles.has(key):
+		_tile_age[key] = _clock
+		_mutex.unlock()
+		return t
+	var path := "%stiles/%d_%d.bin.gz" % [_dir, tx, ty]
+	t = []
+	if FileAccess.file_exists(path):
+		var n := tile * tile
+		var raw := FileAccess.get_file_as_bytes(path).decompress(n * 3, FileAccess.COMPRESSION_GZIP)
+		if raw.size() == n * 3:
+			t = [raw.slice(0, n), raw.slice(n, 2 * n), raw.slice(2 * n, 3 * n)]
+	_tiles[key] = t
+	_tile_age[key] = _clock
+	if _tiles.size() > MAX_TILES:
+		var oldest: Vector2i = key
+		var age := _clock
+		for k in _tile_age:
+			if _tile_age[k] < age:
+				age = _tile_age[k]
+				oldest = k
+		_tiles.erase(oldest)
+		_tile_age.erase(oldest)
+	_mutex.unlock()
+	return t
+
+
+func _tiled_at(x: int, y: int, layer: int, outside: int) -> int:
+	var t := _get_tile(x / tile, y / tile)
+	if t.is_empty():
+		return outside
+	return t[layer][(y % tile) * tile + (x % tile)]
 
 
 ## Couche d'un octet par case : <nom>.bin.gz (compressé) ou <nom>.bin.
@@ -108,6 +183,8 @@ static func available() -> PackedStringArray:
 func b_at(x: int, y: int) -> int:
 	if not real or not inside(x, y):
 		return 0
+	if tiled:
+		return _tiled_at(x, y, 2, 0)
 	return bld[y * width + x]
 
 
@@ -118,22 +195,38 @@ func inside(x: int, y: int) -> bool:
 func t_at(x: int, y: int) -> int:
 	if not inside(x, y):
 		return T_MER
+	if tiled:
+		return _tiled_at(x, y, 0, T_MER)
 	return terrain[y * width + x]
 
 
 func r_at(x: int, y: int) -> int:
 	if not inside(x, y):
 		return R_AUCUNE
+	if tiled:
+		return _tiled_at(x, y, 1, R_AUCUNE)
 	return roads[y * width + x]
 
 
 func d_at(x: int, y: int) -> int:
-	if not inside(x, y):
+	if tiled or not inside(x, y):
 		return 0
 	return density[y * width + x]
 
 
-func e_at(x: int, y: int) -> int:
+## Altitude en mètres (interpolée pour les zones en tuiles).
+func e_at(x: int, y: int) -> float:
+	if tiled:
+		var fx := clampf(x / float(elev_step), 0.0, elev_w - 1.001)
+		var fy := clampf(y / float(elev_step), 0.0, elev_h - 1.001)
+		var ix := int(fx)
+		var iy := int(fy)
+		var tx := fx - ix
+		var ty := fy - iy
+		var k := iy * elev_w + ix
+		var a := lerpf(elev[k], elev[k + 1], tx)
+		var b := lerpf(elev[k + elev_w], elev[k + elev_w + 1], tx)
+		return lerpf(a, b, ty)
 	return elev[clampi(y, 0, height - 1) * width + clampi(x, 0, width - 1)]
 
 
