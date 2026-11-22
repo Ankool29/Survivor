@@ -188,22 +188,36 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 	var h := hash_cell(x, y)
 	c.decor[i] = -1
 	c.flags[i] = 0
-	if b == 2 and (h & 1023) >= 70:
+	if b == 2:
 		_put(c, lx, ly, Tiles.G_MUR, h & 3)
 		_deco(c, lx, ly, Tiles.D_MUR, F_BLOCK)
 		return
-	# sol (ou brèche dans un mur, environ 7 %)
+	# sol (4 = porte : une ouverture dans le mur)
 	_put(c, lx, ly, Tiles.G_CARRELAGE if b == 3 else Tiles.G_SOL_BATIMENT, h & 3)
+	if b == 4:
+		c.flags[i] = F_INDOOR
+		return
 	c.flags[i] = F_INDOOR
 	var a := float((h >> 10) & 0xFFFF) / 65536.0
 	# meubles contre les murs, à fouiller
-	var by_wall := zone.b_at(x + 1, y) == 2 or zone.b_at(x - 1, y) == 2 or zone.b_at(x, y - 1) == 2
-	if by_wall and a < 0.06:
+	# meubles contre un mur latéral ou le mur du bas, jamais sous la face d'un mur du haut
+	# ni devant une porte
+	var by_wall := zone.b_at(x + 1, y) == 2 or zone.b_at(x - 1, y) == 2 or zone.b_at(x, y + 1) == 2
+	var blocked := zone.b_at(x, y - 1) == 2 or _near_door(x, y)
+	if by_wall and not blocked and a < 0.06:
 		_deco(c, lx, ly, _furniture(x, y, b), F_TRUNK)
 	elif a < 0.02:
 		_deco(c, lx, ly, Tiles.D_GRAVATS)
 	elif a < 0.028:
 		_deco(c, lx, ly, Tiles.D_BUISSON)
+
+
+func _near_door(x: int, y: int) -> bool:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if zone.b_at(x + dx, y + dy) == 4:
+				return true
+	return false
 
 
 ## Meuble selon le type du bâtiment (lieu notable le plus proche, ou zone industrielle).

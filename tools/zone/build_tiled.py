@@ -6,6 +6,7 @@ Sortie (dossier --out) :
   meta.json            taille, échelle, tuiles, codes, sources
   tiles/<tx>_<ty>.bin.gz  pour chaque tuile non entièrement marine :
                        terrain, voies, bâtiments (TILE x TILE octets chacun, à la suite)
+                       bâtiments : 1 sol, 2 mur, 3 sol de bâtiment notable, 4 porte
   elev.bin.gz          altitude en mètres (0-255), grille grossière (ELEV_STEP cases)
   pois.json, places.json
   preview.png          aperçu réduit pour la carte du jeu
@@ -20,6 +21,7 @@ import os
 
 import numpy as np
 import shapely
+import shapely.affinity
 from affine import Affine
 from rasterio import features
 from scipy import ndimage
@@ -46,6 +48,54 @@ def coarse_grid(cfg, step):
     c["cells_per_km"] = cfg["cells_per_km"] / step
     g = Grid(c)
     return g
+
+
+def orthogonalize(g, max_deg=25.0):
+    """Redresse un bâtiment presque aligné sur la grille (sinon ses murs font des escaliers)."""
+    try:
+        g = g.simplify(0.6, preserve_topology=True)
+        rect = g.minimum_rotated_rectangle
+        xs, ys = rect.exterior.coords.xy
+        dx, dy = xs[1] - xs[0], ys[1] - ys[0]
+        ang = np.degrees(np.arctan2(dy, dx))
+        ang = (ang + 45.0) % 90.0 - 45.0          # écart à l'axe le plus proche
+        if abs(ang) <= max_deg and abs(ang) > 0.5:
+            g = shapely.affinity.rotate(g, -ang, origin="centroid")
+        return g
+    except Exception:
+        return g
+
+
+def pick_doors(ids, bld, rd, inner):
+    """Une porte par bâtiment (deux s'il est grand) : une case de mur droite qui donne
+    sur l'extérieur, de préférence vers une voie, sinon vers le sud."""
+    h, w = ids.shape
+    wall = bld == 2
+    ys, xs = np.nonzero(wall & inner)
+    if len(ys) == 0:
+        return
+    k = ids[ys, xs]
+    best = {}
+    for d, (dy, dx) in enumerate(((1, 0), (0, -1), (0, 1), (-1, 0))):     # sud, ouest, est, nord
+        oy, ox = ys + dy, xs + dx
+        iy, ix = ys - dy, xs - dx
+        ok = (oy >= 0) & (oy < h) & (ox >= 0) & (ox < w) & (iy >= 0) & (iy < h) & (ix >= 0) & (ix < w)
+        oyc, oxc = np.clip(oy, 0, h - 1), np.clip(ox, 0, w - 1)
+        iyc, ixc = np.clip(iy, 0, h - 1), np.clip(ix, 0, w - 1)
+        outside = ids[oyc, oxc] != k
+        indoor = (ids[iyc, ixc] == k) & (bld[iyc, ixc] != 2)
+        # mur droit : les deux voisins le long du mur sont des murs du même bâtiment
+        ay, ax = np.clip(ys + dx, 0, h - 1), np.clip(xs + dy, 0, w - 1)
+        by, bx = np.clip(ys - dx, 0, h - 1), np.clip(xs - dy, 0, w - 1)
+        straight = (ids[ay, ax] == k) & (ids[by, bx] == k) & wall[ay, ax] & wall[by, bx]
+        cand = ok & outside & indoor & straight
+        score = np.where(rd[oyc, oxc] > 0, 10.0, 0.0) + (3 - d) * 0.5 + ((ys * 7 + xs * 13) % 97) * 0.004
+        for j in np.nonzero(cand)[0]:
+            kk = int(k[j])
+            if score[j] > best.get(kk, (-1, 0, 0))[0]:
+                best[kk] = (score[j], ys[j], xs[j])
+    for kk, (_, y, x) in best.items():
+        bld[y, x] = 4
 
 
 def burn(shapes, sub, out, all_touched=False):
@@ -99,7 +149,7 @@ def build(cfg, src, out):
     roads = sorted(col.roads, key=lambda t: order[t[0]])
     road_geoms = [g.buffer(REAL_WIDTH_M[c] / 2, cap_style="flat") for c, g in roads]
     road_vals = [c for c, _ in roads]
-    bld_geoms = col.buildings
+    bld_geoms = [orthogonalize(g) for g in col.buildings]
     bld_spec = col.building_special
     trees = {name: shapely.STRtree(gs) if gs else None for name, gs in
              [("land", land_geoms), ("water", water), ("road", road_geoms), ("bld", bld_geoms)]}
@@ -112,7 +162,7 @@ def build(cfg, src, out):
     counts = {"terrain": np.zeros(256, np.int64), "roads": np.zeros(256, np.int64)}
     written = 0
     preview = np.zeros((grid.size // PREVIEW_STEP + 1, grid.size // PREVIEW_STEP + 1, 3), np.uint8)
-    M = 1  # marge d'une case pour les murs en bord de tuile
+    M = 2  # marge pour les murs et les portes en bord de tuile
     for ty in range(n_t):
         for tx in range(n_t):
             c0, r0 = tx * T, ty * T
@@ -151,6 +201,9 @@ def build(cfg, src, out):
                 for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     edge |= inside & (np.roll(np.roll(ids, dy, 0), dx, 1) != ids)
                 bld[edge] = 2
+                inner = np.zeros(sub.shape, bool)
+                inner[M:M + h, M:M + w] = True
+                pick_doors(ids, bld, rd, inner)
             # retirer la marge
             terr, rd, bld = (a[M:M + h, M:M + w] for a in (terr, rd, bld))
             terr[sea] = TERRAIN["mer"]
