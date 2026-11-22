@@ -72,3 +72,16 @@ fixés dans `game/scripts/world/tiles.gd` pour que le remplacement ne touche pas
 - [ ] Marcher et traverser une ville ne saccade pas sur le S25 Ultra.
 - [ ] La pose d'un morceau prend moins de 8 ms (mesuré : environ 1 ms sur ordinateur ; la fabrication, 10 à 30 ms, se fait en arrière-plan).
 - [ ] La carte et le nom du lieu permettent de s'orienter.
+
+## Essai à l'échelle réelle (novembre 2026)
+
+Zone `quimperle_reel` : Quimperlé sur 5 × 5 km, **1 case = 2 m** (500 cases par km).
+
+- Vrais bâtiments d'OpenStreetMap : chaque bâtiment est tracé à sa place, avec ses murs (environ 7 % de brèches) et son sol de ruine ; sol carrelé pour les bâtiments notables.
+- Vraies largeurs de voies (voie rapide 14 m, rue 5 m, sentier 2,5 m), sentiers et voies de service inclus, aucune rue omise.
+- Décor environ 4,5 fois moins dense par case, ponts effondrés par blocs de 64 m.
+- Vitesse de marche : environ 5 m/s (2,5 cases par seconde).
+- Données compressées (gzip) : environ 1,2 Mo pour la zone.
+- Bouton « Changer de carte » pour passer d'une zone à l'autre.
+
+À décider après essai : passer toute la carte à l'échelle réelle (et le découpage des données en paquets que cela demande), garder les deux, ou une échelle intermédiaire.
