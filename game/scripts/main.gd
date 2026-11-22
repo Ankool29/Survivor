@@ -83,8 +83,9 @@ func _process(delta: float) -> void:
 		_place_timer = 0.5
 		_update_place()
 	map_view.player_cell = player.position / Tiles.SIZE
-	debug_label.text = "%d img/s · morceaux %d · dernier %.1f ms (max %.1f) · case %d, %d · alt. %d m" % [
+	debug_label.text = "%d img/s · morceaux %d · fabrication %.1f ms (max %.1f) · pose %.1f ms (max %.1f) · case %d, %d · alt. %d m" % [
 		Engine.get_frames_per_second(), world.loaded_count(), world.last_gen_ms, world.max_gen_ms,
+		world.last_apply_ms, world.max_apply_ms,
 		player.cell().x, player.cell().y, zone.e_at(player.cell().x, player.cell().y)]
 
 

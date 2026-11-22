@@ -47,6 +47,14 @@ func _init(z: ZoneData, s: int) -> void:
 		_pois_by_chunk[key].append(p)
 
 
+## Entier pseudo-aléatoire stable (31 bits) pour une case.
+func hash_cell(x: int, y: int) -> int:
+	var n: int = x * 374761393 + y * 668265263 + seed_value * 982451653
+	n = (n ^ (n >> 13)) * 1274126177
+	n = n ^ (n >> 16)
+	return n & 0x7FFFFFFF
+
+
 ## Nombre pseudo-aléatoire stable dans [0, 1) pour une case et un usage.
 func rnd(x: int, y: int, salt: int) -> float:
 	var n: int = x * 374761393 + y * 668265263 + (seed_value + salt * 7919) * 982451653
@@ -70,6 +78,34 @@ func patch(x: int, y: int, scale: int, salt: int) -> float:
 	return lerpf(a, b, ty)
 
 
+## Taches de 5 cases, précalculées pour le morceau (bien plus rapide que patch()).
+var _p5 := PackedFloat32Array()
+var _p5_x := 0
+var _p5_y := 0
+
+
+func _prepare_patch5(x0: int, y0: int) -> void:
+	_p5_x = floori(x0 / 5.0)
+	_p5_y = floori(y0 / 5.0)
+	_p5.resize(10 * 10)
+	for j in 10:
+		for i in 10:
+			_p5[j * 10 + i] = rnd(_p5_x + i, _p5_y + j, 2)
+
+
+func _patch5(x: int, y: int) -> float:
+	var fx := x / 5.0 - _p5_x
+	var fy := y / 5.0 - _p5_y
+	var ix := int(fx)
+	var iy := int(fy)
+	var tx := fx - ix
+	var ty := fy - iy
+	tx = tx * tx * (3.0 - 2.0 * tx)
+	ty = ty * ty * (3.0 - 2.0 * ty)
+	var k := iy * 10 + ix
+	return lerpf(lerpf(_p5[k], _p5[k + 1], tx), lerpf(_p5[k + 10], _p5[k + 11], tx), ty)
+
+
 func generate(cx: int, cy: int) -> ChunkData:
 	var c := ChunkData.new()
 	c.cx = cx
@@ -81,6 +117,7 @@ func generate(cx: int, cy: int) -> ChunkData:
 	c.flags.resize(n)
 	var x0 := cx * CHUNK
 	var y0 := cy * CHUNK
+	_prepare_patch5(x0, y0)
 	# 1. sol, voies, eau
 	for ly in CHUNK:
 		for lx in CHUNK:
@@ -103,15 +140,17 @@ func _deco(c: ChunkData, lx: int, ly: int, d: int, flag := 0) -> void:
 
 
 func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
-	var t := zone.t_at(x, y)
-	var road := zone.r_at(x, y)
-	var v := int(rnd(x, y, 1) * 4.0)
-	var r2 := patch(x, y, 5, 2) * 0.8 + rnd(x, y, 2) * 0.2
 	var i := ly * CHUNK + lx
+	var h := hash_cell(x, y)
+	var v := h & 3
 	if not zone.inside(x, y):
 		_put(c, lx, ly, Tiles.G_MER, v)
 		c.flags[i] = F_BLOCK
 		return
+	var zi := y * zone.width + x
+	var t: int = zone.terrain[zi]
+	var road: int = zone.roads[zi]
+	var r2 := _patch5(x, y) * 0.8 + float((h >> 2) & 0xFF) / 1280.0
 	var water := t == ZoneData.T_MER or t == ZoneData.T_EAU
 	if road != ZoneData.R_AUCUNE:
 		if water:
@@ -147,7 +186,7 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 	if water:
 		_water(c, lx, ly, x, y, t, v)
 		return
-	var a := rnd(x, y, 6)
+	var a := float((h >> 10) & 0xFFFF) / 65536.0
 	match t:
 		ZoneData.T_SABLE:
 			_put(c, lx, ly, Tiles.G_SABLE, v)

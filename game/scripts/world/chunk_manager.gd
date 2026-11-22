@@ -1,7 +1,9 @@
 class_name ChunkManager
 extends Node2D
-## Charge les morceaux autour de la caméra, au plus un par image, et décharge
-## ceux qui s'éloignent. Fournit les drapeaux de déplacement au joueur.
+## Charge les morceaux autour de la caméra et décharge ceux qui s'éloignent.
+## La fabrication d'un morceau se fait sur un autre cœur (WorkerThreadPool),
+## une à la fois ; l'image principale ne fait que poser les tuiles prêtes.
+## Fournit les drapeaux de déplacement au joueur.
 
 const CHUNK := WorldGen.CHUNK
 const TILE := Tiles.SIZE
@@ -17,8 +19,15 @@ var _chunks := {}           # Vector2i -> WorldGen.ChunkData
 var _shades := {}           # Vector2i -> Sprite2D
 var _queue: Array[Vector2i] = []
 var _shade_material: CanvasItemMaterial
-var last_gen_ms := 0.0
+var last_gen_ms := 0.0      ## fabrication (en arrière-plan)
 var max_gen_ms := 0.0
+var last_apply_ms := 0.0    ## pose des tuiles (image principale)
+var max_apply_ms := 0.0
+
+var _task := -1             # tâche de fabrication en cours
+var _task_key := Vector2i.ZERO
+var _task_result: WorldGen.ChunkData
+var _task_ms := 0.0
 
 
 func setup(z: ZoneData, seed_value: int) -> void:
@@ -47,6 +56,7 @@ func setup(z: ZoneData, seed_value: int) -> void:
 
 ## Remet le monde à zéro avec une nouvelle graine (nouvelle partie).
 func reset(seed_value: int) -> void:
+	_finish_task(false)
 	for key in _chunks.keys():
 		_unload(key)
 	_queue.clear()
@@ -61,7 +71,11 @@ func chunk_of_cell(cell: Vector2i) -> Vector2i:
 func ensure_cell(cell: Vector2i) -> WorldGen.ChunkData:
 	var key := chunk_of_cell(cell)
 	if not _chunks.has(key):
-		_load(key)
+		_finish_task(true)
+		if not _chunks.has(key):
+			var t0 := Time.get_ticks_usec()
+			var c := gen.generate(key.x, key.y)
+			_apply(key, c, (Time.get_ticks_usec() - t0) / 1000.0)
 	return _chunks[key]
 
 
@@ -103,10 +117,15 @@ func update_view(view: Rect2) -> void:
 				_queue.append(key)
 	# Les plus proches d'abord
 	_queue.sort_custom(func(p, q): return (Vector2(p) - center).length_squared() < (Vector2(q) - center).length_squared())
-	if not _queue.is_empty():
-		var key: Vector2i = _queue.pop_front()
-		if wanted.has(key) and not _chunks.has(key):
-			_load(key)
+	# Poser un morceau prêt, puis lancer la fabrication du suivant
+	if _task != -1 and WorkerThreadPool.is_task_completed(_task):
+		_finish_task(true)
+	if _task == -1:
+		while not _queue.is_empty():
+			var key: Vector2i = _queue.pop_front()
+			if wanted.has(key) and not _chunks.has(key):
+				_start_task(key)
+				break
 	# Décharger ce qui est loin (avec une marge pour éviter les allers-retours)
 	for key in _chunks.keys():
 		if key.x < a.x - 1 or key.x > b.x + 1 or key.y < a.y - 1 or key.y > b.y + 1:
@@ -118,9 +137,33 @@ func loaded_count() -> int:
 	return _chunks.size()
 
 
-func _load(key: Vector2i) -> void:
+func _start_task(key: Vector2i) -> void:
+	_task_key = key
+	_task_result = null
+	_task = WorkerThreadPool.add_task(_generate_in_thread.bind(key, gen))
+
+
+func _generate_in_thread(key: Vector2i, g: WorldGen) -> void:
 	var t0 := Time.get_ticks_usec()
-	var c := gen.generate(key.x, key.y)
+	var c := g.generate(key.x, key.y)
+	_task_ms = (Time.get_ticks_usec() - t0) / 1000.0
+	_task_result = c
+
+
+## Attend la tâche en cours ; pose le morceau si apply est vrai.
+func _finish_task(apply: bool) -> void:
+	if _task == -1:
+		return
+	WorkerThreadPool.wait_for_task_completion(_task)
+	_task = -1
+	var c := _task_result
+	_task_result = null
+	if apply and c != null and not _chunks.has(_task_key):
+		_apply(_task_key, c, _task_ms)
+
+
+func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
+	var t0 := Time.get_ticks_usec()
 	var x0 := key.x * CHUNK
 	var y0 := key.y * CHUNK
 	for ly in CHUNK:
@@ -144,8 +187,10 @@ func _load(key: Vector2i) -> void:
 	shade_root.add_child(s)
 	_shades[key] = s
 	_chunks[key] = c
-	last_gen_ms = (Time.get_ticks_usec() - t0) / 1000.0
-	max_gen_ms = maxf(max_gen_ms, last_gen_ms)
+	last_gen_ms = gen_ms
+	max_gen_ms = maxf(max_gen_ms, gen_ms)
+	last_apply_ms = (Time.get_ticks_usec() - t0) / 1000.0
+	max_apply_ms = maxf(max_apply_ms, last_apply_ms)
 
 
 func _unload(key: Vector2i) -> void:

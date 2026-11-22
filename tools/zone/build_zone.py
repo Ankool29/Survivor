@@ -48,7 +48,11 @@ ROADS = {
     "rue": 4, "chemin": 5, "rail": 6,
 }
 # Largeur dessinee, en cases (une case = 1/32 km)
-ROAD_WIDTH = {1: 4, 2: 3, 3: 2, 4: 2, 5: 1, 6: 1}
+ROAD_WIDTH = {1: 4, 2: 3, 3: 2, 4: 1, 5: 1, 6: 1}
+# En ville, les petites rues plus courtes que ceci sont omises : a 31 m par case,
+# garder toutes les rues ne laisserait aucune place aux batiments.
+URBAN_STREET_MIN_M = 500
+URBAN_DENSITY = 30
 HIGHWAY = {
     "motorway": 1, "trunk": 1, "motorway_link": 2, "trunk_link": 2,
     "primary": 2, "primary_link": 2,
@@ -376,6 +380,21 @@ def main():
     density = np.clip(density * 255, 0, 255).astype(np.uint8)
     density[sea] = 0
     del fine
+
+    # --- Rues de ville : on ne garde que les longues
+    urban_mask = ndimage.uniform_filter(density.astype(np.float32), 5) > URBAN_DENSITY
+    kept, dropped = [], 0
+    for c, g in col.roads:
+        if c == 4 and g.length < URBAN_STREET_MIN_M:
+            pts = [g.interpolate(f, normalized=True) for f in (0.1, 0.5, 0.9)]
+            cells = [grid.to_cell(p.x, p.y) for p in pts]
+            inside = [urban_mask[min(max(int(r), 0), grid.size - 1), min(max(int(q), 0), grid.size - 1)] for q, r in cells]
+            if sum(inside) >= 2:
+                dropped += 1
+                continue
+        kept.append((c, g))
+    col.roads = kept
+    log("  rues de ville omises :", dropped)
 
     # --- Voies, des petites aux grandes (les grandes passent dessus)
     roads = np.zeros(grid.shape, dtype=np.uint8)
