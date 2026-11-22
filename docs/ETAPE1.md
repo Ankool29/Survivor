@@ -84,4 +84,6 @@ Zone `quimperle_reel` : Quimperlé sur 5 × 5 km, **1 case = 2 m** (500 cases pa
 - Données compressées (gzip) : environ 1,2 Mo pour la zone.
 - Bouton « Changer de carte » pour passer d'une zone à l'autre.
 
-À décider après essai : passer toute la carte à l'échelle réelle (et le découpage des données en paquets que cela demande), garder les deux, ou une échelle intermédiaire.
+Retour après essai : nettement mieux qu'à l'échelle compressée, mais trop en ruine (voir `A_CORRIGER.md`, n° 10).
+
+À décider : passer toute la carte à l'échelle réelle (et le découpage des données en paquets que cela demande), garder les deux, ou une échelle intermédiaire.
