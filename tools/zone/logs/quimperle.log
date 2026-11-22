@@ -1,12 +1,41 @@
-== Sun Nov 22 14:22:07 UTC 2026 : zone quimperle
+== Sun Nov 22 14:50:23 UTC 2026 : zone quimperle
 Extrait OSM : https://download.geofabrik.de/europe/france/bretagne/bretagne-latest.osm.pbf
 Boite : -3.94047,47.60923,-3.16079,48.13380
 Relief IGN...
-  IGN : 16 tuiles
-Zone quimperle : 1600 x 1600 cases de 31.25 m
+  echec (1) : HTTP Error 502: Bad Gateway
+  echec (1) : HTTP Error 400: Bad Request
+  echec (1) : HTTP Error 400: Bad Request
+  echec (1) : HTTP Error 400: Bad Request
+  IGN : 256 tuiles
+Zone quimperle : 25000 x 25000 cases de 2.00 m, 25 x 25 tuiles de 1024
 Lecture OSM : /tmp/src/zone.osm.pbf
-  surfaces 18311, cours d'eau 5364, voies 42128, batiments 296422, lieux 3313, noms 5737
-  relief : IGN RGE ALTI, 2025246 cases renseignees
-  rues de ville omises : 6621
-Termine : {"terrain": {"mer": 548967, "eau": 71040, "sable": 1705, "prairie": 105892, "champ": 1301681, "foret_feuillus": 120504, "foret_resineux": 33681, "foret_mixte": 185057, "lande": 13839, "marais": 10651, "urbain": 146127, "industriel": 11866, "roche": 3733, "cimetiere": 709, "parc": 4548}, "roads": {"aucune": 2240176, "voie_rapide": 9655, "principale": 14711, "secondaire": 91821, "rue": 134999, "chemin": 65699, "rail": 2939}, "pois": 3313, "places": 5737}
-== termine Sun Nov 22 14:25:27 UTC 2026
+  surfaces 18311, cours d'eau 5364, voies 73078, batiments 296422, lieux 3313, noms 5737
+  relief : IGN RGE ALTI, 30931790 cases renseignees
+Préparation des géométries…
+  rangée 1/25 (25 tuiles écrites)
+  rangée 2/25 (50 tuiles écrites)
+  rangée 3/25 (75 tuiles écrites)
+  rangée 4/25 (100 tuiles écrites)
+  rangée 5/25 (125 tuiles écrites)
+  rangée 6/25 (150 tuiles écrites)
+  rangée 7/25 (175 tuiles écrites)
+  rangée 8/25 (200 tuiles écrites)
+  rangée 9/25 (225 tuiles écrites)
+  rangée 10/25 (250 tuiles écrites)
+  rangée 11/25 (275 tuiles écrites)
+  rangée 12/25 (300 tuiles écrites)
+  rangée 13/25 (325 tuiles écrites)
+  rangée 14/25 (350 tuiles écrites)
+  rangée 15/25 (375 tuiles écrites)
+  rangée 16/25 (400 tuiles écrites)
+  rangée 17/25 (421 tuiles écrites)
+  rangée 18/25 (439 tuiles écrites)
+  rangée 19/25 (453 tuiles écrites)
+  rangée 20/25 (465 tuiles écrites)
+  rangée 21/25 (477 tuiles écrites)
+  rangée 22/25 (488 tuiles écrites)
+  rangée 23/25 (499 tuiles écrites)
+  rangée 24/25 (504 tuiles écrites)
+  rangée 25/25 (510 tuiles écrites)
+Termine : 510 tuiles ; {"aucune": 515345047, "voie_rapide": 471527, "principale": 486109, "secondaire": 3425527, "rue": 9545538, "chemin": 5288769, "rail": 211243}
+== termine Sun Nov 22 15:00:03 UTC 2026

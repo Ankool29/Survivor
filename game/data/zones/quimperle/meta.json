@@ -1,20 +1,25 @@
 {
  "name": "quimperle",
  "title": "Pays de Quimperlé",
- "width": 1600,
- "height": 1600,
- "cells_per_km": 32,
- "cell_m": 31.25,
+ "width": 25000,
+ "height": 25000,
+ "cells_per_km": 500,
+ "cell_m": 2.0,
  "crs": "EPSG:2154",
  "origin_x": 185959.75052203028,
  "origin_y": 6797692.295990669,
- "mode": "compresse",
- "layers": [
+ "mode": "reel",
+ "tile": 1024,
+ "tiles_x": 25,
+ "tiles_y": 25,
+ "tile_layers": [
   "terrain",
   "roads",
-  "density",
-  "elev"
+  "bld"
  ],
+ "elev_step": 4,
+ "elev_w": 6250,
+ "elev_h": 6250,
  "terrain_codes": {
   "mer": 0,
   "eau": 1,
@@ -46,33 +51,35 @@
   "IGN RGE ALTI (Licence Ouverte Etalab 2.0)"
  ],
  "counts": {
+  "tiles": 510,
   "terrain": {
-   "mer": 548967,
-   "eau": 71040,
-   "sable": 1705,
-   "prairie": 105892,
-   "champ": 1301681,
-   "foret_feuillus": 120504,
-   "foret_resineux": 33681,
-   "foret_mixte": 185057,
-   "lande": 13839,
-   "marais": 10651,
-   "urbain": 146127,
-   "industriel": 11866,
-   "roche": 3733,
-   "cimetiere": 709,
-   "parc": 4548
+   "mer": 43910240,
+   "eau": 5018281,
+   "sable": 442881,
+   "prairie": 26884258,
+   "champ": 322837202,
+   "foret_feuillus": 31603524,
+   "foret_resineux": 8607800,
+   "foret_mixte": 48027734,
+   "lande": 3417258,
+   "marais": 2843939,
+   "urbain": 35953664,
+   "industriel": 2959171,
+   "roche": 949844,
+   "cimetiere": 179740,
+   "parc": 1138224
   },
   "roads": {
-   "aucune": 2240176,
-   "voie_rapide": 9655,
-   "principale": 14711,
-   "secondaire": 91821,
-   "rue": 134999,
-   "chemin": 65699,
-   "rail": 2939
+   "aucune": 515345047,
+   "voie_rapide": 471527,
+   "principale": 486109,
+   "secondaire": 3425527,
+   "rue": 9545538,
+   "chemin": 5288769,
+   "rail": 211243
   },
   "pois": 3313,
-  "places": 5737
+  "places": 5737,
+  "buildings": 296422
  }
 }
