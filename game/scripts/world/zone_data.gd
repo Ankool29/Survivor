@@ -188,6 +188,21 @@ func b_at(x: int, y: int) -> int:
 	return bld[y * width + x]
 
 
+## Partie « type de case » du code de bâtiment : 1 sol, 2 mur, 3 sol notable, 4 porte.
+func bb_at(x: int, y: int) -> int:
+	return b_at(x, y) & 15
+
+
+## Toit du bâtiment : 0 aucun (effondré, ruine), 1 ardoise, 2 tôle.
+func roof_at(x: int, y: int) -> int:
+	return (b_at(x, y) >> 4) & 3
+
+
+## État du bâtiment : 0 intact, 1 toit effondré, 2 ruine.
+func state_at(x: int, y: int) -> int:
+	return (b_at(x, y) >> 6) & 3
+
+
 func inside(x: int, y: int) -> bool:
 	return x >= 0 and y >= 0 and x < width and y < height
 

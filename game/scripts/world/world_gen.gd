@@ -11,6 +11,7 @@ const F_BLOCK := 1    # infranchissable (mer, eau profonde, mur, épave)
 const F_TRUNK := 2    # petit obstacle au pied de la case (tronc, rocher, tombe)
 const F_SLOW := 4     # ralentit (marais, ronces, gué)
 const F_INDOOR := 8   # intérieur de bâtiment
+const F_ROOF := 16    # sous un toit intact (à l'abri de la pluie)
 
 const POI_SIZE := {
 	"hopital": Vector2i(14, 10), "supermarche": Vector2i(13, 10), "eglise": Vector2i(7, 11),
@@ -181,11 +182,16 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 	if not zone.real:
 		return
 	# Échelle réelle : vrais bâtiments d'OpenStreetMap
-	var b := zone.b_at(x, y)
-	if b == 0:
-		return
+	var b := zone.bb_at(x, y)
 	var i := ly * CHUNK + lx
+	if b == 0:
+		# lierre et herbes au pied des façades (sous un mur, dehors)
+		if c.decor[i] < 0 and zone.bb_at(x, y - 1) == 2 and zone.r_at(x, y) == 0 and not zone.is_water(x, y):
+			if (hash_cell(x, y) >> 5) % 100 < 22:
+				_deco(c, lx, ly, Tiles.D_LIERRE)
+		return
 	var h := hash_cell(x, y)
+	var state := zone.state_at(x, y)
 	c.decor[i] = -1
 	c.flags[i] = 0
 	if b == 2:
@@ -194,16 +200,26 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 		return
 	# sol (4 = porte : une ouverture dans le mur)
 	_put(c, lx, ly, Tiles.G_CARRELAGE if b == 3 else Tiles.G_SOL_BATIMENT, h & 3)
+	var roofed := F_ROOF if state == 0 else 0
 	if b == 4:
-		c.flags[i] = F_INDOOR
+		c.flags[i] = F_INDOOR | roofed
 		return
-	c.flags[i] = F_INDOOR
+	c.flags[i] = F_INDOOR | roofed
 	var a := float((h >> 10) & 0xFFFF) / 65536.0
+	if state != 0:
+		# toit effondré ou ruine : gravats, herbes, jeunes arbres
+		if a < 0.08:
+			_deco(c, lx, ly, Tiles.D_GRAVATS)
+		elif a < 0.13:
+			_deco(c, lx, ly, Tiles.D_BUISSON)
+		elif a < 0.15:
+			_deco(c, lx, ly, Tiles.D_JEUNE_ARBRE, F_TRUNK)
+		return
 	# meubles contre les murs, à fouiller
 	# meubles contre un mur latéral ou le mur du bas, jamais sous la face d'un mur du haut
 	# ni devant une porte
-	var by_wall := zone.b_at(x + 1, y) == 2 or zone.b_at(x - 1, y) == 2 or zone.b_at(x, y + 1) == 2
-	var blocked := zone.b_at(x, y - 1) == 2 or _near_door(x, y)
+	var by_wall := zone.bb_at(x + 1, y) == 2 or zone.bb_at(x - 1, y) == 2 or zone.bb_at(x, y + 1) == 2
+	var blocked := zone.bb_at(x, y - 1) == 2 or _near_door(x, y)
 	if by_wall and not blocked and a < 0.06:
 		_deco(c, lx, ly, _furniture(x, y, b), F_TRUNK)
 	elif a < 0.02:
@@ -215,7 +231,7 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 func _near_door(x: int, y: int) -> bool:
 	for dy in range(-1, 2):
 		for dx in range(-1, 2):
-			if zone.b_at(x + dx, y + dy) == 4:
+			if zone.bb_at(x + dx, y + dy) == 4:
 				return true
 	return false
 

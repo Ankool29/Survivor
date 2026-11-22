@@ -71,6 +71,12 @@ PREVIEW_COLORS = {
     12: (130, 130, 120), 13: (120, 130, 110), 14: (110, 150, 80),
 }
 
+# Toits de tôle : hangars, ateliers, commerces ; les autres bâtiments ont un toit d'ardoise
+METAL_ROOF = {"industrial", "warehouse", "retail", "commercial", "garage", "garages", "barn",
+              "farm_auxiliary", "hangar", "shed", "supermarket", "service", "manufacture",
+              "storage_tank", "greenhouse", "carport", "transportation", "sports_hall"}
+SLATE_KINDS = {"eglise", "mairie", "chateau", "musee", "bibliotheque", "ecole", "ferme", "pharmacie"}
+
 POI_KINDS = {
     ("amenity", "hospital"): "hopital", ("amenity", "clinic"): "hopital",
     ("amenity", "pharmacy"): "pharmacie", ("amenity", "doctors"): "pharmacie",
@@ -134,6 +140,7 @@ class Collector(osmium.SimpleHandler):
         self.grid = grid
         self.real = real
         self.building_special = []
+        self.building_roof = []       # 1 ardoise, 2 tôle
         self.wkb = osmium.geom.WKBFactory()
         self.landcover = []   # (priorite, geometrie, code terrain)
         self.water_lines = []  # (geometrie, largeur en cases)
@@ -268,6 +275,10 @@ class Collector(osmium.SimpleHandler):
         if is_building:
             self.buildings.append(g)
             self.building_special.append(bool(kind))
+            btag = tags.get("building", "yes")
+            metal = btag in METAL_ROOF or (kind and kind not in SLATE_KINDS) or \
+                (btag == "yes" and g.area > 900)
+            self.building_roof.append(2 if metal else 1)
             if not kind and g.area > 1500:
                 b = tags.get("building")
                 kind = {"industrial": "entrepot", "warehouse": "entrepot", "retail": "magasin",

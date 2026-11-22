@@ -66,6 +66,7 @@ const D_FEU_ETEINT := 24
 const D_FEU_ALLUME := 25
 const D_ABRI := 26
 const D_COFFRE := 27
+const D_LIERRE := 28
 const DECOR_COLS := 8
 
 ## Objets de décor PixelLab (tailles variées) : res://assets/decor/<nom>.png,
@@ -98,6 +99,7 @@ const DECOR_VARIANTS := {
 	D_FEU_ALLUME: ["feu_allume"],
 	D_ABRI: ["abri"],
 	D_COFFRE: ["coffre"],
+	D_LIERRE: ["lierre_a", "lierre_b", "lierre_c", "orties", "fougere", "mousse"],
 }
 const DECOR_META := "res://assets/decor/decor.json"
 const SRC_OBJ := 100

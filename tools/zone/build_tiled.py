@@ -6,7 +6,9 @@ Sortie (dossier --out) :
   meta.json            taille, échelle, tuiles, codes, sources
   tiles/<tx>_<ty>.bin.gz  pour chaque tuile non entièrement marine :
                        terrain, voies, bâtiments (TILE x TILE octets chacun, à la suite)
-                       bâtiments : 1 sol, 2 mur, 3 sol de bâtiment notable, 4 porte
+                       bâtiments : (bits 0-3) 1 sol, 2 mur, 3 sol de bâtiment notable, 4 porte ;
+                       (bits 4-5) toit : 0 aucun, 1 ardoise, 2 tôle ; (bits 6-7) état :
+                       0 intact, 1 toit effondré, 2 ruine
   elev.bin.gz          altitude en mètres (0-255), grille grossière (ELEV_STEP cases)
   pois.json, places.json
   preview.png          aperçu réduit pour la carte du jeu
@@ -151,6 +153,11 @@ def build(cfg, src, out):
     road_vals = [c for c, _ in roads]
     bld_geoms = [orthogonalize(g) for g in col.buildings]
     bld_spec = col.building_special
+    bld_roof = col.building_roof
+    # État de chaque bâtiment (stable pour une même carte) : 0 intact, 1 toit effondré, 2 ruine
+    rng = np.random.default_rng(1234)
+    rr = rng.random(len(bld_geoms))
+    bld_state = np.where(rr < 0.85, 0, np.where(rr < 0.95, 1, 2)).astype(np.uint8)
     trees = {name: shapely.STRtree(gs) if gs else None for name, gs in
              [("land", land_geoms), ("water", water), ("road", road_geoms), ("bld", bld_geoms)]}
 
@@ -204,6 +211,17 @@ def build(cfg, src, out):
                 inner = np.zeros(sub.shape, bool)
                 inner[M:M + h, M:M + w] = True
                 pick_doors(ids, bld, rd, inner)
+                # ruines : deux ou trois brèches de plus
+                st_of = np.array([0] + [int(bld_state[i]) for i in bidx], np.uint8)
+                rf_of = np.array([0] + [int(bld_roof[i]) for i in bidx], np.uint8)
+                walls = np.nonzero((bld == 2) & inner & (st_of[ids] == 2))
+                if len(walls[0]):
+                    pick = (walls[0] * 31 + walls[1] * 17) % 23 == 0
+                    bld[walls[0][pick], walls[1][pick]] = 4
+                # code final : base | toit << 4 | état << 6 (toit 0 si effondré ou ruine)
+                roof = np.where(st_of[ids] == 0, rf_of[ids], 0).astype(np.uint8)
+                state = st_of[ids]
+                bld = np.where(bld > 0, bld | (roof << 4) | (state << 6), 0).astype(np.uint8)
             # retirer la marge
             terr, rd, bld = (a[M:M + h, M:M + w] for a in (terr, rd, bld))
             terr[sea] = TERRAIN["mer"]
@@ -227,6 +245,8 @@ def build(cfg, src, out):
             img[np.isin(rs, (1, 2))] = (235, 190, 90)
             bs = bld[:h:PREVIEW_STEP, :w:PREVIEW_STEP]
             img[bs > 0] = (110, 96, 86)
+            img[(bs >> 4 & 3) == 1] = (78, 84, 98)
+            img[(bs >> 4 & 3) == 2] = (128, 126, 120)
             pr0, pc0 = r0 // PREVIEW_STEP, c0 // PREVIEW_STEP
             preview[pr0:pr0 + img.shape[0], pc0:pc0 + img.shape[1]] = img
         log("  rangée %d/%d (%d tuiles écrites)" % (ty + 1, n_t, written))

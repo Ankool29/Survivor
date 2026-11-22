@@ -220,7 +220,7 @@ func _process(delta: float) -> void:
 func _tick_survival(delta: float) -> void:
 	var cell := player.cell()
 	surv.running = player.moving and player._running_now
-	surv.indoor = world.flags_at(cell) & WorldGen.F_INDOOR != 0
+	surv.indoor = world.flags_at(cell) & WorldGen.F_ROOF != 0
 	surv.near_fire = actions.near_fire(player.position).x >= 0
 	surv.sheltered = actions.near_structure(player.position, "abri").x >= 0
 	var speed := SLEEP_SPEED if surv.sleeping else 1.0
@@ -279,8 +279,10 @@ func _on_sleep_button() -> void:
 	var q := 0.6
 	if actions.near_structure(player.position, "abri").x >= 0:
 		q = 1.0
-	elif world.flags_at(player.cell()) & WorldGen.F_INDOOR:
+	elif world.flags_at(player.cell()) & WorldGen.F_ROOF:
 		q = 0.9
+	elif world.flags_at(player.cell()) & WorldGen.F_INDOOR:
+		q = 0.7
 	_sleep(q)
 
 
