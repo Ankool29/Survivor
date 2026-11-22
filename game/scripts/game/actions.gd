@@ -185,7 +185,7 @@ func run(t: Dictionary, pos: Vector2) -> Dictionary:
 				surv.hurt(3.0, "les ronces")
 		"Ramasser des pierres":
 			got = {"pierre": 2}
-			if randf() < 0.3:
+			if randf() < 0.5:
 				got["silex"] = 1
 			mods.harvest(cell, surv.minutes, 5.0)
 		"Fouiller les débris":

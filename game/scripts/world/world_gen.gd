@@ -313,6 +313,8 @@ func _cell_base(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 					_deco(c, lx, ly, Tiles.D_JEUNE_ARBRE, F_TRUNK)
 			ZoneData.R_CHEMIN:
 				_put(c, lx, ly, Tiles.G_CHEMIN if r2 < 0.6 else Tiles.G_FRICHE, v)
+				if rnd(x, y, 4) / deco_k < 0.03:
+					_deco(c, lx, ly, Tiles.D_ROCHER)   # cailloux du chemin
 			ZoneData.R_RAIL:
 				_put(c, lx, ly, Tiles.G_RAIL, v)
 				if rnd(x, y, 4) / deco_k < 0.04:
@@ -334,6 +336,8 @@ func _cell_base(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 			# 30 ans sans culture : friche, ronces, jeunes arbres
 			_put(c, lx, ly, Tiles.G_FRICHE if r2 < 0.32 else Tiles.G_HERBE_HAUTE, v)
 			_wild(c, lx, ly, a, 0.10, 0.07, 0.06)
+			if a >= 0.23 and a < 0.26:
+				_deco(c, lx, ly, Tiles.D_ROCHER, F_TRUNK)   # pierres remontées par les labours
 		ZoneData.T_FEUILLUS, ZoneData.T_MIXTE, ZoneData.T_RESINEUX:
 			var conifer := t == ZoneData.T_RESINEUX or (t == ZoneData.T_MIXTE and patch(x, y, 9, 7) < 0.45)
 			_put(c, lx, ly, Tiles.G_SOL_RESINEUX if conifer else Tiles.G_SOL_FEUILLUS, v)
@@ -350,6 +354,8 @@ func _cell_base(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 				_deco(c, lx, ly, Tiles.D_BUISSON)
 			elif a < 0.57:
 				_deco(c, lx, ly, Tiles.D_RONCES, F_SLOW)
+			elif a < 0.6:
+				_deco(c, lx, ly, Tiles.D_ROCHER, F_TRUNK)
 		ZoneData.T_LANDE:
 			_put(c, lx, ly, Tiles.G_LANDE, v)
 			if a < 0.18:
