@@ -44,10 +44,10 @@ Mentions obligatoires : « © les contributeurs d'OpenStreetMap (ODbL) » et « 
 
 ## 2. Monde en jeu
 
-- **Morceaux** de 32 × 32 cases, chargés autour du joueur (un par image au plus pour éviter les saccades), déchargés au-delà.
+- **Morceaux** de 32 × 32 cases, fabriqués sur un autre cœur du processeur (un à la fois), puis posés en environ 1 ms ; déchargés au-delà de la vue.
 - **Fabrication déterministe** : chaque case donne toujours le même résultat (variante de sol, arbre, ruine), calculé à partir de ses coordonnées et de la graine de la partie.
 - **30 ans d'abandon** : champs devenus friches et broussailles, routes fissurées et envahies, ponts parfois effondrés, quartiers en ruine.
-- **Villes stylisées** : les rues réelles sont tracées, et les îlots entre elles sont remplis de bâtiments à taille humaine, plus serrés là où la densité réelle est forte. Les grands bâtiments réels (supermarché, église, hôpital) sont placés à leur emplacement.
+- **Villes stylisées** : les grandes rues réelles sont tracées (les petites rues de moins de 500 m sont omises en ville, faute de place à cette échelle), et les îlots entre elles sont remplis de bâtiments à taille humaine, plus serrés là où la densité réelle est forte. Les grands bâtiments réels (supermarché, église, hôpital) sont placés à leur emplacement.
 - **Relief** : ombrage doux des pentes, calculé à partir de l'altitude.
 - **Collisions** : mer, eau profonde et murs bloquent ; marais et broussailles ralentissent.
 
@@ -70,5 +70,5 @@ fixés dans `game/scripts/world/tiles.gd` pour que le remplacement ne touche pas
 
 - [ ] La zone générée ressemble au pays de Quimperlé (Laïta, forêt de Carnoët, Lorient, la côte).
 - [ ] Marcher et traverser une ville ne saccade pas sur le S25 Ultra.
-- [ ] Le chargement d'un morceau prend moins de 8 ms.
+- [ ] La pose d'un morceau prend moins de 8 ms (mesuré : environ 1 ms sur ordinateur ; la fabrication, 10 à 30 ms, se fait en arrière-plan).
 - [ ] La carte et le nom du lieu permettent de s'orienter.

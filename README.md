@@ -16,6 +16,20 @@ rendue à la nature 30 ans après une pandémie. Godot 4, jouable sur mobile.
 | `.github/workflows/` | Fabrication automatique des zones par GitHub Actions |
 | `docs/` | Cahiers d'étape et de sprites |
 
+## Tester sur le téléphone (Termux + éditeur Godot Android)
+
+Première fois, dans Termux :
+
+```
+git clone https://github.com/Ankool29/Survivor ~/survivor
+echo "alias majsv='cd ~/survivor && git pull && rsync -a --delete --exclude .godot ~/survivor/game/ /storage/emulated/0/Godot/survivor/'" >> ~/.bashrc
+source ~/.bashrc
+majsv
+```
+
+Ensuite, à chaque mise à jour : `majsv`, puis ouvrir le projet `Godot/survivor` dans l'éditeur.
+Le projet vise Godot 4.5.
+
 ## Données
 
 Cartographie © les contributeurs d'OpenStreetMap, sous licence ODbL.

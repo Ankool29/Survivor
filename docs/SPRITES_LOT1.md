@@ -33,9 +33,10 @@ pas d'objets d'inventaire, pas d'intérieurs détaillés : ce sera pour les lots
 
 ## Intégration
 
-- Les tilesets à transitions demandent un petit changement de rendu : le sol sera dessiné
+- Les tilesets à transitions viennent de l'outil « Create tileset » de PixelLab (1 génération
+  en version standard), exportés au format « dual-grid 15 tuiles ». Le sol sera alors dessiné
   sur une grille décalée d'une demi-case (« grille double »), chaque tuile choisie selon les
-  4 coins. C'est prévu dans le code dès la réception du premier tileset.
+  4 coins. Ce changement de rendu sera fait à la réception du premier tileset.
 - Les autres planches gardent la disposition de `game/scripts/world/tiles.gd`
   (`assets/tiles/ground.png`, `assets/tiles/decor.png`) : aucun changement de code.
 - Règle reprise d'EXODE : défaut grave corrigé avant intégration, défaut mineur intégré

@@ -338,24 +338,32 @@ func _place_buildings(c: ChunkData, x0: int, y0: int) -> void:
 				urban += 1
 	if urban < 4:
 		return
-	var attempts := mini(int(dens / 255.0 * 1.4) + urban / 30, 90)
-	for k in attempts:
-		var lx := int(rnd(c.cx * 131 + k, c.cy, 20) * CHUNK)
-		var ly := int(rnd(c.cx, c.cy * 131 + k, 21) * CHUNK)
-		var wx := x0 + lx
-		var wy := y0 + ly
-		var t := zone.t_at(wx, wy)
-		var d := zone.d_at(wx, wy)
-		if not (t == ZoneData.T_URBAIN or t == ZoneData.T_INDUSTRIEL or d > 10):
-			continue
-		if rnd(wx, wy, 22) * 255.0 > d + 40:
-			continue
-		var indus := t == ZoneData.T_INDUSTRIEL
-		var w := 6 + int(rnd(wx, wy, 23) * 5) if indus else 3 + int(rnd(wx, wy, 23) * 4)
-		var h := 5 + int(rnd(wx, wy, 24) * 4) if indus else 3 + int(rnd(wx, wy, 24) * 3)
-		var r := Rect2i(lx - w / 2, ly - h / 2, w, h)
-		if _free(c, r, 1, occupied):
-			_build(c, r, occupied, false, "entrepot" if indus else "maison", "")
+	# Parcours de l'îlot par pas de 2 cases : on tente un bâtiment à chaque
+	# point, avec une probabilité qui suit la densité réelle du bâti.
+	for ly in range(1, CHUNK - 2, 2):
+		for lx in range(1, CHUNK - 2, 2):
+			var wx := x0 + lx
+			var wy := y0 + ly
+			if occupied[ly * CHUNK + lx]:
+				continue
+			var t := zone.t_at(wx, wy)
+			var d := zone.d_at(wx, wy)
+			if not (t == ZoneData.T_URBAIN or t == ZoneData.T_INDUSTRIEL or d > 8):
+				continue
+			var chance := clampf(d / 90.0, 0.12, 0.95)
+			if t == ZoneData.T_URBAIN:
+				chance = maxf(chance, 0.35)
+			if rnd(wx, wy, 22) > chance:
+				continue
+			var indus := t == ZoneData.T_INDUSTRIEL
+			var w := 6 + int(rnd(wx, wy, 23) * 5) if indus else 3 + int(rnd(wx, wy, 23) * 3)
+			var h := 5 + int(rnd(wx, wy, 24) * 4) if indus else 3 + int(rnd(wx, wy, 24) * 2)
+			# essayer la taille prévue, puis plus petit
+			for shrink in 2:
+				var r := Rect2i(lx, ly, maxi(3, w - shrink * 2), maxi(3, h - shrink))
+				if _free(c, r, 1, occupied):
+					_build(c, r, occupied, false, "entrepot" if indus else "maison", "")
+					break
 
 
 func _build(c: ChunkData, r: Rect2i, occupied: PackedByteArray, special: bool, kind: String, label: String) -> void:
