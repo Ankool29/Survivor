@@ -34,6 +34,9 @@ class ChunkData:
 	var decor := PackedInt32Array()    # Tiles.D_* ou -1
 	var flags := PackedByteArray()
 	var shade: Image
+	## Type de sol (Tiles.G_*) des cases x0-1..x0+31 / y0-1..y0+31, avant les
+	## bâtiments : sert aux transitions de la grille double. Index (ly+1)*33+(lx+1).
+	var kinds := PackedByteArray()
 	var buildings: Array = []          # {rect: Rect2i (cases monde), kind: String, name: String}
 
 
@@ -85,8 +88,8 @@ var _p5_y := 0
 
 
 func _prepare_patch5(x0: int, y0: int) -> void:
-	_p5_x = floori(x0 / 5.0)
-	_p5_y = floori(y0 / 5.0)
+	_p5_x = floori((x0 - 1) / 5.0)
+	_p5_y = floori((y0 - 1) / 5.0)
 	_p5.resize(10 * 10)
 	for j in 10:
 		for i in 10:
@@ -122,6 +125,23 @@ func generate(cx: int, cy: int) -> ChunkData:
 	for ly in CHUNK:
 		for lx in CHUNK:
 			_cell(c, lx, ly, x0 + lx, y0 + ly)
+	# 1 bis. types de sol, bordure ouest et nord comprise (même calcul que _cell)
+	const K := CHUNK + 1
+	c.kinds.resize(K * K)
+	var scratch := ChunkData.new()
+	scratch.ground.resize(1)
+	scratch.decor.resize(1)
+	scratch.flags.resize(1)
+	for ly in range(-1, CHUNK):
+		for lx in range(-1, CHUNK):
+			var g: int
+			if lx >= 0 and ly >= 0:
+				g = c.ground[ly * CHUNK + lx] / Tiles.VARIANTS
+			else:
+				scratch.flags[0] = 0
+				_cell(scratch, 0, 0, x0 + lx, y0 + ly)
+				g = scratch.ground[0] / Tiles.VARIANTS
+			c.kinds[(ly + 1) * K + lx + 1] = g
 	# 2. bâtiments (contenus dans le morceau)
 	_place_buildings(c, x0, y0)
 	# 3. ombrage du relief (1 case de marge pour un raccord sans couture)
@@ -197,7 +217,7 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 			_wild(c, lx, ly, a, 0.06, 0.03, 0.03)
 		ZoneData.T_CHAMP:
 			# 30 ans sans culture : friche, ronces, jeunes arbres
-			_put(c, lx, ly, Tiles.G_FRICHE if r2 < 0.7 else Tiles.G_HERBE_HAUTE, v)
+			_put(c, lx, ly, Tiles.G_FRICHE if r2 < 0.32 else Tiles.G_HERBE_HAUTE, v)
 			_wild(c, lx, ly, a, 0.10, 0.07, 0.06)
 		ZoneData.T_FEUILLUS, ZoneData.T_MIXTE, ZoneData.T_RESINEUX:
 			var conifer := t == ZoneData.T_RESINEUX or (t == ZoneData.T_MIXTE and patch(x, y, 9, 7) < 0.45)

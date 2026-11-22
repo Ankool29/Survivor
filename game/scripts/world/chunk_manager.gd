@@ -14,6 +14,9 @@ var ground: TileMapLayer
 var shade_root: Node2D
 var entities: Node2D        ## parent trié en Y : décor + joueur
 var decor: TileMapLayer
+var wang_layers: Array[TileMapLayer] = []   ## une couche par transition, décalée d'une demi-case
+var _wang_of_kind := PackedInt32Array()     ## Tiles.G_* -> index de couche, -1 = aucune, -2 = herbe
+var _has_base := false
 
 var _chunks := {}           # Vector2i -> WorldGen.ChunkData
 var _shades := {}           # Vector2i -> Sprite2D
@@ -34,6 +37,36 @@ func setup(z: ZoneData, seed_value: int) -> void:
 	zone = z
 	gen = WorldGen.new(z, seed_value)
 	var ts := Tiles.build_tileset()
+	_has_base = ts.has_source(Tiles.SRC_BASE)
+	if _has_base:
+		# Herbe de base : une seule image répétée sur toute la zone (aucun coût par morceau)
+		var grass := Sprite2D.new()
+		grass.name = "Herbe"
+		grass.texture = load(Tiles.BASE_PATH)
+		grass.centered = false
+		grass.region_enabled = true
+		grass.region_rect = Rect2(0, 0, zone.width * Tiles.SIZE, zone.height * Tiles.SIZE)
+		grass.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+		add_child(grass)
+	_wang_of_kind.resize(Tiles.GROUND_COUNT)
+	_wang_of_kind.fill(-1)
+	for i in Tiles.WANG_NAMES.size():
+		var layer := TileMapLayer.new()
+		layer.name = "Transition_" + Tiles.WANG_NAMES[i]
+		layer.tile_set = ts
+		layer.position = Vector2(-Tiles.SIZE / 2.0, -Tiles.SIZE / 2.0)
+		add_child(layer)
+		wang_layers.append(layer)
+	if _has_base:
+		for k in Tiles.WANG_OF_GROUND:
+			var name: String = Tiles.WANG_OF_GROUND[k]
+			if name == "":
+				_wang_of_kind[k] = -2
+			else:
+				var i := Tiles.WANG_NAMES.find(name)
+				if ts.has_source(Tiles.SRC_WANG + i):
+					_wang_of_kind[k] = i
+	# Tuiles pleines par-dessus (provisoires, ponts, rails, sols de bâtiments)
 	ground = TileMapLayer.new()
 	ground.name = "Sol"
 	ground.tile_set = ts
@@ -166,12 +199,16 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	var x0 := key.x * CHUNK
 	var y0 := key.y * CHUNK
+	if _has_base:
+		_apply_dual(c, x0, y0)
 	for ly in CHUNK:
 		for lx in CHUNK:
 			var i := ly * CHUNK + lx
 			var g := c.ground[i]
 			var cell := Vector2i(x0 + lx, y0 + ly)
-			ground.set_cell(cell, Tiles.SRC_GROUND, Vector2i(g % Tiles.VARIANTS, g / Tiles.VARIANTS))
+			var kind := g / Tiles.VARIANTS
+			if not _has_base or _wang_of_kind[kind] == -1 or kind in Tiles.OVERLAY_GROUNDS:
+				ground.set_cell(cell, Tiles.SRC_GROUND, Vector2i(g % Tiles.VARIANTS, kind))
 			var d := c.decor[i]
 			if d >= 0:
 				decor.set_cell(cell, Tiles.SRC_DECOR, Tiles.decor_coords(d))
@@ -193,6 +230,33 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 	max_apply_ms = maxf(max_apply_ms, last_apply_ms)
 
 
+## Chaque transition sur la grille décalée : la case double
+## (X, Y) a pour coins les cases (X-1, Y-1), (X, Y-1), (X-1, Y), (X, Y).
+func _apply_dual(c: WorldGen.ChunkData, x0: int, y0: int) -> void:
+	const K := CHUNK + 1
+	var corners := PackedInt32Array([0, 0, 0, 0])
+	for dy in CHUNK:
+		for dx in CHUNK:
+			var r := dy * K + dx
+			corners[0] = _wang_of_kind[c.kinds[r]]
+			corners[1] = _wang_of_kind[c.kinds[r + 1]]
+			corners[2] = _wang_of_kind[c.kinds[r + K]]
+			corners[3] = _wang_of_kind[c.kinds[r + K + 1]]
+			for j in 4:
+				var layer := corners[j]
+				if layer < 0:
+					continue
+				var seen := false
+				for q in j:
+					if corners[q] == layer:
+						seen = true
+				if seen:
+					continue
+				var mask := (8 if corners[0] == layer else 0) | (4 if corners[1] == layer else 0) \
+					| (2 if corners[2] == layer else 0) | (1 if corners[3] == layer else 0)
+				wang_layers[layer].set_cell(Vector2i(x0 + dx, y0 + dy), Tiles.SRC_WANG + layer, Vector2i(mask, 0))
+
+
 func _unload(key: Vector2i) -> void:
 	var x0 := key.x * CHUNK
 	var y0 := key.y * CHUNK
@@ -201,6 +265,8 @@ func _unload(key: Vector2i) -> void:
 			var cell := Vector2i(x0 + lx, y0 + ly)
 			ground.erase_cell(cell)
 			decor.erase_cell(cell)
+			for layer in wang_layers:
+				layer.erase_cell(cell)
 	if _shades.has(key):
 		_shades[key].queue_free()
 		_shades.erase(key)
