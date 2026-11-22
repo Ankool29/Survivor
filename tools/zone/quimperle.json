@@ -5,5 +5,5 @@
   "center_lon": -3.549,
   "size_km": 50,
   "cells_per_km": 32,
-  "osm_extract": "https://download.geofabrik.de/europe/france/bretagne-latest.osm.pbf"
+  "osm_region": "bretagne"
 }

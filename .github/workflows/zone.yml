@@ -49,7 +49,9 @@ jobs:
           {
             echo "== $(date -u) : zone $ZONE"
             CFG=tools/zone/$ZONE.json
-            URL=$(python -c "import json;print(json.load(open('$CFG'))['osm_extract'])")
+            REGION=$(python -c "import json;print(json.load(open('$CFG'))['osm_region'])")
+            curl -sSfL --retry 3 -o /tmp/dl/index.json https://download.geofabrik.de/index-v1-nogeom.json
+            URL=$(python -c "import json;d=json.load(open('/tmp/dl/index.json'));print(next(f['properties']['urls']['pbf'] for f in d['features'] if f['properties']['id']=='$REGION'))")
             BBOX=$(python tools/zone/build_zone.py --config $CFG --src . --out /tmp/x --bbox-only)
             echo "Extrait OSM : $URL"
             echo "Boite : $BBOX"
