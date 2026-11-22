@@ -4,7 +4,8 @@ Jeu de survie en monde ouvert, en pixel art vu de dessus, dans une France réell
 rendue à la nature 30 ans après une pandémie. Godot 4, jouable sur mobile.
 
 - Concept : [Concept — Survie post-apo en France](https://claude.ai/artifact/P5sUvAzE4xM9eoHhxtnWb5)
-- Étape en cours : [docs/ETAPE1.md](docs/ETAPE1.md) — monde test autour de Quimperlé
+- Étape 1 (terminée) : [docs/ETAPE1.md](docs/ETAPE1.md) — monde à l'échelle réelle autour de Quimperlé
+- Étape 2 (proposition à valider) : [docs/ETAPE2.md](docs/ETAPE2.md) — survie de base
 
 ## Organisation
 
