@@ -38,6 +38,9 @@ var terrain: PackedByteArray
 var roads: PackedByteArray
 var density: PackedByteArray
 var elev: PackedByteArray
+var bld: PackedByteArray        ## bâtiments réels (mode réel) : 1 sol, 2 mur, 3 sol notable
+var real := false               ## échelle réelle (vrais bâtiments) ou compressée
+var cell_m := 31.25
 var pois: Array = []
 var places: Array = []
 var sources: Array = []
@@ -58,11 +61,17 @@ static func load_zone(zone_name: String) -> ZoneData:
 	z.height = int(meta["height"])
 	z.cells_per_km = int(meta.get("cells_per_km", 32))
 	z.sources = meta.get("sources", [])
-	z.terrain = FileAccess.get_file_as_bytes(dir + "terrain.bin")
-	z.roads = FileAccess.get_file_as_bytes(dir + "roads.bin")
-	z.density = FileAccess.get_file_as_bytes(dir + "density.bin")
-	z.elev = FileAccess.get_file_as_bytes(dir + "elev.bin")
 	var n := z.width * z.height
+	z.real = meta.get("mode", "") == "reel"
+	z.cell_m = float(meta.get("cell_m", 31.25))
+	z.terrain = _layer(dir, "terrain", n)
+	z.roads = _layer(dir, "roads", n)
+	z.density = _layer(dir, "density", n)
+	z.elev = _layer(dir, "elev", n)
+	if z.real:
+		z.bld = _layer(dir, "bld", n)
+		if z.bld.size() != n:
+			z.bld.resize(n)
 	for arr in [z.terrain, z.roads, z.density, z.elev]:
 		if arr.size() != n:
 			push_error("Fichier de zone de taille inattendue")
@@ -74,6 +83,32 @@ static func load_zone(zone_name: String) -> ZoneData:
 	if ResourceLoader.exists(dir + "preview.png"):
 		z.map_texture = load(dir + "preview.png")
 	return z
+
+
+## Couche d'un octet par case : <nom>.bin.gz (compressé) ou <nom>.bin.
+static func _layer(dir: String, layer: String, n: int) -> PackedByteArray:
+	if FileAccess.file_exists(dir + layer + ".bin.gz"):
+		var raw := FileAccess.get_file_as_bytes(dir + layer + ".bin.gz")
+		return raw.decompress(n, FileAccess.COMPRESSION_GZIP)
+	return FileAccess.get_file_as_bytes(dir + layer + ".bin")
+
+
+## Liste des zones disponibles (dossiers de res://data/zones contenant meta.json).
+static func available() -> PackedStringArray:
+	var out := PackedStringArray()
+	var d := DirAccess.open("res://data/zones")
+	if d:
+		for name in d.get_directories():
+			if FileAccess.file_exists("res://data/zones/%s/meta.json" % name) and name != "test":
+				out.append(name)
+	out.sort()
+	return out
+
+
+func b_at(x: int, y: int) -> int:
+	if not real or not inside(x, y):
+		return 0
+	return bld[y * width + x]
 
 
 func inside(x: int, y: int) -> bool:

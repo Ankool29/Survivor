@@ -279,13 +279,15 @@ func _compute_dual(c: WorldGen.ChunkData, x0: int, y0: int) -> Array:
 					| (2 if corners[2] == layer else 0) | (1 if corners[3] == layer else 0)
 				out[layer].append_array([x0 + dx, y0 + dy, mask])
 	# Jeux en relief (murs) : un coin sous un dessus de mur porte la face du mur
-	if c.buildings.is_empty():
-		return out
-	var zone_r := Rect2i()
-	for b in c.buildings:
-		var br: Rect2i = b["rect"]
-		zone_r = br if zone_r.size == Vector2i.ZERO else zone_r.merge(br)
-	zone_r = zone_r.grow(2).intersection(Rect2i(x0, y0, CHUNK, CHUNK))
+	var zone_r := Rect2i(x0, y0, CHUNK, CHUNK)
+	if not zone.real:
+		if c.buildings.is_empty():
+			return out
+		zone_r = Rect2i()
+		for b in c.buildings:
+			var br: Rect2i = b["rect"]
+			zone_r = br if zone_r.size == Vector2i.ZERO else zone_r.merge(br)
+		zone_r = zone_r.grow(2).intersection(Rect2i(x0, y0, CHUNK, CHUNK))
 	for layer in _cliff:
 		var lookup: Dictionary = _cliff[layer]
 		for dy in range(zone_r.position.y - y0, zone_r.end.y - y0):

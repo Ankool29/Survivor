@@ -2,6 +2,7 @@ extends Node2D
 ## Scène principale de l'étape 1 : monde test, joueur, interface.
 
 const ZONE := "quimperle"
+const ZONE_FILE := "user://zone.txt"
 const ZOOM_MIN := 1.0
 const ZOOM_MAX := 4.0
 
@@ -22,6 +23,9 @@ var _pinch_dist := 0.0
 
 func _ready() -> void:
 	var zone_name := ZONE
+	var saved := FileAccess.get_file_as_string(ZONE_FILE).strip_edges()
+	if saved != "" and saved in ZoneData.available():
+		zone_name = saved
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--zone="):
 			zone_name = arg.trim_prefix("--zone=")
@@ -38,6 +42,8 @@ func _ready() -> void:
 	player = Player.new()
 	player.name = "Joueur"
 	player.world = world
+	# Vitesse : 4 cases/s à l'échelle compressée ; environ 5 m/s à l'échelle réelle
+	player.walk_speed = clampf(5.0 / zone.cell_m, 2.5, 4.0) * Tiles.SIZE
 	world.entities.add_child(player)
 	camera = Camera2D.new()
 	camera.zoom = Vector2(2, 2)
@@ -182,8 +188,22 @@ func _build_ui() -> void:
 	zoom_row.add_child(_button(" + ", func(): set_zoom(camera.zoom.x * 1.4)))
 	bar.add_child(zoom_row)
 	bar.add_child(_button("Nouveau départ", func(): new_game(randi())))
+	bar.add_child(_button("Changer de carte", _next_zone))
 	map_view = MapView.new()
 	hud.add_child(map_view)
+
+
+## Passe à la zone suivante (échelle compressée / échelle réelle…) et relance.
+func _next_zone() -> void:
+	var zones := ZoneData.available()
+	if zones.size() < 2:
+		place_label.text = "Une seule carte disponible"
+		return
+	var i := zones.find(zone.name if zone else "")
+	var f := FileAccess.open(ZONE_FILE, FileAccess.WRITE)
+	f.store_string(zones[(i + 1) % zones.size()])
+	f.close()
+	get_tree().reload_current_scene()
 
 
 func _open_map() -> void:

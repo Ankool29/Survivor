@@ -4,3 +4,4 @@ __pycache__/
 /export/
 *.apk
 game/data/zones/test/
+game/data/zones/test_reel/

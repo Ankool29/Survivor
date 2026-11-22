@@ -24,6 +24,11 @@ const POI_SIZE := {
 
 var zone: ZoneData
 var seed_value := 1
+## Densité du décor : 1 à l'échelle compressée ; plus faible à l'échelle réelle,
+## où une case ne fait que 2 m (sinon un arbre toutes les deux cases).
+var deco_k := 1.0
+var bridge_shift := 3
+var shade_k := 0.035
 var _pois_by_chunk := {}
 
 
@@ -44,6 +49,10 @@ class ChunkData:
 func _init(z: ZoneData, s: int) -> void:
 	zone = z
 	seed_value = s
+	if zone.real:
+		deco_k = 0.22
+		bridge_shift = 5
+		shade_k = 0.12
 	for p in zone.pois:
 		var key := Vector2i(int(p["x"]) / CHUNK, int(p["y"]) / CHUNK)
 		if not _pois_by_chunk.has(key):
@@ -145,7 +154,7 @@ func generate(cx: int, cy: int) -> ChunkData:
 			c.kinds[(ly + 1) * K + lx + 1] = g
 	# 2. bâtiments (contenus dans le morceau, à une case des bords)
 	_place_buildings(c, x0, y0)
-	for b in c.buildings:
+	for b in ([] if zone.real else c.buildings):
 		var r: Rect2i = b["rect"]
 		for wy in range(r.position.y, r.end.y):
 			for wx in range(r.position.x, r.end.x):
@@ -168,6 +177,32 @@ func _deco(c: ChunkData, lx: int, ly: int, d: int, flag := 0) -> void:
 
 
 func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
+	_cell_base(c, lx, ly, x, y)
+	if not zone.real:
+		return
+	# Échelle réelle : vrais bâtiments d'OpenStreetMap
+	var b := zone.b_at(x, y)
+	if b == 0:
+		return
+	var i := ly * CHUNK + lx
+	var h := hash_cell(x, y)
+	c.decor[i] = -1
+	c.flags[i] = 0
+	if b == 2 and (h & 1023) >= 70:
+		_put(c, lx, ly, Tiles.G_MUR, h & 3)
+		_deco(c, lx, ly, Tiles.D_MUR, F_BLOCK)
+		return
+	# sol (ou brèche dans un mur, environ 7 %)
+	_put(c, lx, ly, Tiles.G_CARRELAGE if b == 3 else Tiles.G_SOL_BATIMENT, h & 3)
+	c.flags[i] = F_INDOOR
+	var a := float((h >> 10) & 0xFFFF) / 65536.0
+	if a < 0.025:
+		_deco(c, lx, ly, Tiles.D_GRAVATS)
+	elif a < 0.035:
+		_deco(c, lx, ly, Tiles.D_BUISSON)
+
+
+func _cell_base(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 	var i := ly * CHUNK + lx
 	var h := hash_cell(x, y)
 	var v := h & 3
@@ -183,7 +218,7 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 	if road != ZoneData.R_AUCUNE:
 		if water:
 			# Pont : un sur quatre s'est effondré en 30 ans
-			if rnd(x >> 3, y >> 3, 3) < 0.25:
+			if rnd(x >> bridge_shift, y >> bridge_shift, 3) < 0.25:
 				_water(c, lx, ly, x, y, t, v)
 			else:
 				_put(c, lx, ly, Tiles.G_RAIL if road == ZoneData.R_RAIL else Tiles.G_PONT, v)
@@ -191,13 +226,13 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 		match road:
 			ZoneData.R_VOIE_RAPIDE, ZoneData.R_PRINCIPALE:
 				_put(c, lx, ly, Tiles.G_ASPHALTE_ENVAHI if r2 < 0.3 else Tiles.G_ASPHALTE, v)
-				if rnd(x, y, 4) < 0.025:
+				if rnd(x, y, 4) / deco_k < 0.025:
 					_deco(c, lx, ly, Tiles.D_EPAVE, F_BLOCK)
-				elif rnd(x, y, 5) < 0.02:
+				elif rnd(x, y, 5) / deco_k < 0.02:
 					_deco(c, lx, ly, Tiles.D_BUISSON)
 			ZoneData.R_SECONDAIRE, ZoneData.R_RUE:
 				_put(c, lx, ly, Tiles.G_ASPHALTE_ENVAHI if r2 < 0.45 else Tiles.G_ROUTE, v)
-				var e := rnd(x, y, 4)
+				var e := rnd(x, y, 4) / deco_k
 				if e < 0.008:
 					_deco(c, lx, ly, Tiles.D_EPAVE, F_BLOCK)
 				elif e < 0.05:
@@ -208,13 +243,13 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 				_put(c, lx, ly, Tiles.G_CHEMIN if r2 < 0.6 else Tiles.G_FRICHE, v)
 			ZoneData.R_RAIL:
 				_put(c, lx, ly, Tiles.G_RAIL, v)
-				if rnd(x, y, 4) < 0.04:
+				if rnd(x, y, 4) / deco_k < 0.04:
 					_deco(c, lx, ly, Tiles.D_BUISSON)
 		return
 	if water:
 		_water(c, lx, ly, x, y, t, v)
 		return
-	var a := float((h >> 10) & 0xFFFF) / 65536.0
+	var a := float((h >> 10) & 0xFFFF) / 65536.0 / deco_k
 	match t:
 		ZoneData.T_SABLE:
 			_put(c, lx, ly, Tiles.G_SABLE, v)
@@ -330,6 +365,13 @@ func _free(c: ChunkData, r: Rect2i, margin: int, occupied: PackedByteArray) -> b
 
 
 func _place_buildings(c: ChunkData, x0: int, y0: int) -> void:
+	if zone.real:
+		# Bâtiments réels : on ne garde que les étiquettes des lieux notables
+		for p in _pois_by_chunk.get(Vector2i(c.cx, c.cy), []):
+			var pc := Vector2i(int(p["x"]), int(p["y"]))
+			c.buildings.append({"rect": Rect2i(pc - Vector2i(6, 6), Vector2i(13, 13)),
+				"kind": p["kind"], "name": p.get("name", "")})
+		return
 	var occupied := PackedByteArray()
 	occupied.resize(CHUNK * CHUNK)
 	var key := Vector2i(c.cx, c.cy)
@@ -451,6 +493,6 @@ func _shade(x0: int, y0: int) -> Image:
 			var y := y0 + ly - 1
 			var gx := zone.e_at(x + 1, y) - zone.e_at(x - 1, y)
 			var gy := zone.e_at(x, y + 1) - zone.e_at(x, y - 1)
-			var v := clampf(0.9 + (gx + gy) * 0.035, 0.6, 1.0)
+			var v := clampf(0.9 + (gx + gy) * shade_k, 0.6, 1.0)
 			img.set_pixel(lx, ly, Color(v, v, v))
 	return img

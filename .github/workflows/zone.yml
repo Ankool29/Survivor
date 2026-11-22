@@ -1,8 +1,8 @@
 name: Donnees de zone
 
-# Fabrique les donnees d'une zone de jeu a partir d'OpenStreetMap et du relief
-# IGN, puis les enregistre dans game/data/zones/<zone>/. Le journal est ecrit
-# dans tools/zone/logs/ pour pouvoir le relire sans ouvrir GitHub.
+# Fabrique les donnees de chaque zone de jeu (tools/zone/<zone>.json) a partir
+# d'OpenStreetMap et du relief IGN, puis les enregistre dans game/data/zones/<zone>/.
+# Les journaux sont ecrits dans tools/zone/logs/ pour pouvoir les relire sans ouvrir GitHub.
 on:
   push:
     branches: [main]
@@ -13,8 +13,8 @@ on:
   workflow_dispatch:
     inputs:
       zone:
-        description: 'Fichier de zone (sans .json)'
-        default: 'quimperle'
+        description: 'Fichier de zone (sans .json) ; vide = toutes'
+        default: ''
 
 permissions:
   contents: write
@@ -26,9 +26,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      ZONE: ${{ github.event.inputs.zone || 'quimperle' }}
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -41,38 +39,34 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool > /dev/null
           pip install -q osmium shapely pyproj rasterio numpy scipy pillow
 
-      - name: Donnees sources et zone
+      - name: Donnees sources et zones
         run: |
           set -o pipefail
-          mkdir -p tools/zone/logs /tmp/dl /tmp/src
-          LOG=tools/zone/logs/$ZONE.log
-          {
-            echo "== $(date -u) : zone $ZONE"
-            CFG=tools/zone/$ZONE.json
-            REGION=$(python -c "import json;print(json.load(open('$CFG'))['osm_region'])")
-            curl -sSfL --retry 3 -o /tmp/dl/index.json https://download.geofabrik.de/index-v1-nogeom.json
-            URL=$(python -c "import json;d=json.load(open('/tmp/dl/index.json'));print(next(f['properties']['urls']['pbf'] for f in d['features'] if f['properties']['id']=='$REGION'))")
-            BBOX=$(python tools/zone/build_zone.py --config $CFG --src . --out /tmp/x --bbox-only)
-            echo "Extrait OSM : $URL"
-            echo "Boite : $BBOX"
-            curl -sSfL --retry 3 -o /tmp/dl/region.osm.pbf "$URL"
-            ls -la /tmp/dl
-            osmium extract -b "$BBOX" --strategy=smart -o /tmp/src/zone.osm.pbf /tmp/dl/region.osm.pbf
-            ls -la /tmp/src
-            python tools/zone/fetch_sources.py --config $CFG --out /tmp/src
-            python tools/zone/build_zone.py --config $CFG --src /tmp/src --out game/data/zones/$ZONE
-            echo "== termine $(date -u)"
-          } 2>&1 | tee $LOG
-
-      - name: Garder les sources sur la branche zone-sources
-        if: success()
-        run: |
-          mkdir /tmp/pub && cp /tmp/src/* /tmp/pub/ && cd /tmp/pub
-          git init -q -b zone-sources
-          git config user.name "zone-builder"
-          git config user.email "zone-builder@users.noreply.github.com"
-          git add -A && git commit -qm "Sources de la zone $ZONE"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" zone-sources
+          mkdir -p tools/zone/logs /tmp/dl
+          curl -sSfL --retry 3 -o /tmp/dl/index.json https://download.geofabrik.de/index-v1-nogeom.json
+          if [ -n "${{ github.event.inputs.zone }}" ]; then
+            ZONES="${{ github.event.inputs.zone }}"
+          else
+            ZONES=$(ls tools/zone/*.json | xargs -n1 basename | sed 's/\.json$//')
+          fi
+          for ZONE in $ZONES; do
+            LOG=tools/zone/logs/$ZONE.log
+            {
+              echo "== $(date -u) : zone $ZONE"
+              CFG=tools/zone/$ZONE.json
+              REGION=$(python -c "import json;print(json.load(open('$CFG'))['osm_region'])")
+              URL=$(python -c "import json;d=json.load(open('/tmp/dl/index.json'));print(next(f['properties']['urls']['pbf'] for f in d['features'] if f['properties']['id']=='$REGION'))")
+              BBOX=$(python tools/zone/build_zone.py --config $CFG --src . --out /tmp/x --bbox-only)
+              echo "Extrait OSM : $URL"
+              echo "Boite : $BBOX"
+              [ -f /tmp/dl/$REGION.osm.pbf ] || curl -sSfL --retry 3 -o /tmp/dl/$REGION.osm.pbf "$URL"
+              rm -rf /tmp/src && mkdir -p /tmp/src
+              osmium extract -b "$BBOX" --strategy=smart -o /tmp/src/zone.osm.pbf /tmp/dl/$REGION.osm.pbf
+              python tools/zone/fetch_sources.py --config $CFG --out /tmp/src
+              python tools/zone/build_zone.py --config $CFG --src /tmp/src --out game/data/zones/$ZONE
+              echo "== termine $(date -u)"
+            } 2>&1 | tee $LOG
+          done
 
       - name: Enregistrer
         if: always()
@@ -81,5 +75,5 @@ jobs:
           git config user.email "zone-builder@users.noreply.github.com"
           mkdir -p game/data/zones tools/zone/logs
           git add -A game/data/zones tools/zone/logs
-          git commit -m "Donnees de zone : $ZONE" || echo "Rien a enregistrer"
+          git commit -m "Donnees de zone" || echo "Rien a enregistrer"
           for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done

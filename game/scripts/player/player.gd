@@ -4,7 +4,7 @@ extends Node2D
 ## La position est celle des pieds (sert aussi au tri en profondeur).
 
 const TILE := Tiles.SIZE
-const WALK_SPEED := 4.0 * TILE      # 4 cases par seconde
+var walk_speed := 4.0 * TILE       ## 4 cases par seconde (réglé selon l'échelle par main.gd)
 const RUN_FACTOR := 1.7
 const SLOW_FACTOR := 0.55
 const HALF_W := 7.0
@@ -82,7 +82,7 @@ func _process(delta: float) -> void:
 		if dir.length() > 1.0:
 			dir = dir.normalized()
 		facing = dir.normalized()
-		var speed := WALK_SPEED * (RUN_FACTOR if running else 1.0)
+		var speed := walk_speed * (RUN_FACTOR if running else 1.0)
 		if world.flags_at(cell()) & WorldGen.F_SLOW:
 			speed *= SLOW_FACTOR
 		var step := dir * speed * delta

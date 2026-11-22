@@ -1,0 +1,10 @@
+{
+  "name": "quimperle_reel",
+  "title": "Quimperlé (échelle réelle)",
+  "center_lat": 47.8725,
+  "center_lon": -3.5480,
+  "size_km": 5,
+  "cells_per_km": 500,
+  "mode": "reel",
+  "osm_region": "bretagne"
+}

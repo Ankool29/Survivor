@@ -53,6 +53,10 @@ ROAD_WIDTH = {1: 4, 2: 3, 3: 2, 4: 1, 5: 1, 6: 1}
 # garder toutes les rues ne laisserait aucune place aux batiments.
 URBAN_STREET_MIN_M = 500
 URBAN_DENSITY = 30
+# Mode « reel » (echelle 1:1) : largeur des voies en metres
+REAL_WIDTH_M = {1: 14.0, 2: 8.0, 3: 6.5, 4: 5.0, 5: 2.5, 6: 4.0}
+HIGHWAY_REAL_EXTRA = {"service": 4, "footway": 5, "path": 5, "cycleway": 5, "bridleway": 5,
+                      "steps": 5, "pedestrian": 4}
 HIGHWAY = {
     "motorway": 1, "trunk": 1, "motorway_link": 2, "trunk_link": 2,
     "primary": 2, "primary_link": 2,
@@ -125,9 +129,11 @@ class Grid:
 class Collector(osmium.SimpleHandler):
     """Lit l'extrait OSM et range les geometries par usage."""
 
-    def __init__(self, grid):
+    def __init__(self, grid, real=False):
         super().__init__()
         self.grid = grid
+        self.real = real
+        self.building_special = []
         self.wkb = osmium.geom.WKBFactory()
         self.landcover = []   # (priorite, geometrie, code terrain)
         self.water_lines = []  # (geometrie, largeur en cases)
@@ -190,7 +196,11 @@ class Collector(osmium.SimpleHandler):
         rw = tags.get("railway")
         ww = tags.get("waterway")
         coast = tags.get("natural") == "coastline"
-        if not (hw in HIGHWAY or rw == "rail" or ww in ("river", "canal", "stream") or coast):
+        if self.real and hw in HIGHWAY_REAL_EXTRA and hw not in HIGHWAY:
+            hw_code = HIGHWAY_REAL_EXTRA[hw]
+        else:
+            hw_code = HIGHWAY.get(hw)
+        if not (hw_code or rw == "rail" or ww in ("river", "canal", "stream", "ditch", "drain") or coast):
             return
         try:
             g = self._geom(self.wkb.create_linestring(w))
@@ -198,13 +208,13 @@ class Collector(osmium.SimpleHandler):
             return
         if g is None:
             return
-        if hw in HIGHWAY and tags.get("tunnel") != "yes":
-            self.roads.append((HIGHWAY[hw], g))
+        if hw_code and tags.get("tunnel") != "yes":
+            self.roads.append((hw_code, g))
         elif rw == "rail" and tags.get("tunnel") != "yes":
             self.roads.append((ROADS["rail"], g))
         elif ww in ("river", "canal"):
             self.water_lines.append((g, 2))
-        elif ww == "stream":
+        elif ww in ("stream", "ditch", "drain"):
             self.water_lines.append((g, 1))
         elif coast:
             self.coast.append(g)
@@ -257,6 +267,7 @@ class Collector(osmium.SimpleHandler):
             self.landcover.append((prio, g, TERRAIN[code]))
         if is_building:
             self.buildings.append(g)
+            self.building_special.append(bool(kind))
             if not kind and g.area > 1500:
                 b = tags.get("building")
                 kind = {"industrial": "entrepot", "warehouse": "entrepot", "retail": "magasin",
@@ -338,7 +349,8 @@ def main():
     osm_files = sorted(glob.glob(os.path.join(args.src, "*.osm.pbf")) + glob.glob(os.path.join(args.src, "*.osm")))
     if not osm_files:
         sys.exit("Aucun fichier OSM dans " + args.src)
-    col = Collector(grid)
+    real = cfg.get("mode") == "reel"
+    col = Collector(grid, real)
     log("Lecture OSM :", osm_files[0])
     col.apply_file(osm_files[0], locations=True)
     log("  surfaces %d, cours d'eau %d, voies %d, batiments %d, lieux %d, noms %d" % (
@@ -365,8 +377,12 @@ def main():
         rasterize([(g, v) for p, g, v in col.landcover if p == prio], grid, terrain)
     # Cours d'eau lineaires
     wl = np.zeros(grid.shape, dtype=np.uint8)
-    rasterize([(g, 1) for g, w in col.water_lines if w == 1], grid, wl, all_touched=True)
-    rasterize([(g.buffer(grid.cell * 0.9), 1) for g, w in col.water_lines if w == 2], grid, wl)
+    if real:
+        rasterize([(g.buffer(1.5), 1) for g, w in col.water_lines if w == 1], grid, wl, all_touched=True)
+        rasterize([(g.buffer(7.0), 1) for g, w in col.water_lines if w == 2], grid, wl)
+    else:
+        rasterize([(g, 1) for g, w in col.water_lines if w == 1], grid, wl, all_touched=True)
+        rasterize([(g.buffer(grid.cell * 0.9), 1) for g, w in col.water_lines if w == 2], grid, wl)
     terrain[wl > 0] = TERRAIN["eau"]
     terrain[sea] = TERRAIN["mer"]
 
@@ -385,7 +401,7 @@ def main():
     urban_mask = ndimage.uniform_filter(density.astype(np.float32), 5) > URBAN_DENSITY
     kept, dropped = [], 0
     for c, g in col.roads:
-        if c == 4 and g.length < URBAN_STREET_MIN_M:
+        if not real and c == 4 and g.length < URBAN_STREET_MIN_M:
             pts = [g.interpolate(f, normalized=True) for f in (0.1, 0.5, 0.9)]
             cells = [grid.to_cell(p.x, p.y) for p in pts]
             inside = [urban_mask[min(max(int(r), 0), grid.size - 1), min(max(int(q), 0), grid.size - 1)] for q, r in cells]
@@ -403,11 +419,32 @@ def main():
         geoms = [g for c, g in col.roads if c == code]
         if not geoms:
             continue
+        if real:
+            rasterize([(g.buffer(REAL_WIDTH_M[code] / 2, cap_style="flat"), code) for g in geoms], grid, roads,
+                      all_touched=REAL_WIDTH_M[code] <= grid.cell * 1.5)
+            continue
         if w <= 1:
             rasterize([(g, code) for g in geoms], grid, roads, all_touched=True)
         else:
             rasterize([(g.buffer(grid.cell * w / 2, cap_style="flat"), code) for g in geoms], grid, roads)
     roads[sea & (roads != 1) & (roads != 2)] = 0
+
+    # --- Batiments reels (mode reel) : 1 sol, 2 mur, 3 sol de batiment notable
+    bld = None
+    if real and col.buildings:
+        ids = np.zeros(grid.shape, dtype=np.int32)
+        features.rasterize(((g, i + 1) for i, g in enumerate(col.buildings)), out=ids, transform=grid.transform)
+        bld = np.zeros(grid.shape, dtype=np.uint8)
+        inside = ids > 0
+        special = np.array([False] + col.building_special)
+        bld[inside] = np.where(special[ids[inside]], 3, 1)
+        edge = np.zeros(grid.shape, dtype=bool)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nb = np.roll(np.roll(ids, dy, axis=0), dx, axis=1)
+            edge |= inside & (nb != ids)
+        bld[edge] = 2
+        bld[sea] = 0
+        log("  batiments reels : %d, cases de mur %d" % (len(col.buildings), int(edge.sum())))
 
     # --- Altitude finale : lissee (le modele peut inclure arbres et toits)
     e = np.where(np.isfinite(elev), elev, 0).astype(np.float32)
@@ -416,10 +453,15 @@ def main():
     elev8 = np.clip(np.round(e), 0, 255).astype(np.uint8)
 
     # --- Ecriture
-    terrain.tofile(os.path.join(args.out, "terrain.bin"))
-    roads.tofile(os.path.join(args.out, "roads.bin"))
-    density.tofile(os.path.join(args.out, "density.bin"))
-    elev8.tofile(os.path.join(args.out, "elev.bin"))
+    import gzip
+    for old in glob.glob(os.path.join(args.out, "*.bin")):
+        os.remove(old)
+    layers = {"terrain": terrain, "roads": roads, "density": density, "elev": elev8}
+    if bld is not None:
+        layers["bld"] = bld
+    for lname, arr in layers.items():
+        with gzip.open(os.path.join(args.out, lname + ".bin.gz"), "wb", compresslevel=9) as f:
+            f.write(np.ascontiguousarray(arr).tobytes())
     col.pois.sort(key=lambda p: (-p["area_m2"], p["kind"]))
     json.dump(col.pois, open(os.path.join(args.out, "pois.json"), "w"), ensure_ascii=False, indent=0)
     order = {"city": 0, "town": 1, "suburb": 2, "village": 3, "hamlet": 4, "locality": 5, "isolated_dwelling": 6}
@@ -430,6 +472,7 @@ def main():
         "width": grid.size, "height": grid.size,
         "cells_per_km": grid.cells_per_km, "cell_m": grid.cell,
         "crs": "EPSG:2154", "origin_x": grid.x0, "origin_y": grid.y1,
+        "mode": "reel" if real else "compresse", "layers": list(layers),
         "terrain_codes": TERRAIN, "road_codes": ROADS,
         "sources": ["OpenStreetMap contributors (ODbL)", elev_src],
         "counts": {
@@ -439,11 +482,11 @@ def main():
         },
     }
     json.dump(meta, open(os.path.join(args.out, "meta.json"), "w"), ensure_ascii=False, indent=1)
-    write_preview(terrain, roads, density, e, sea, os.path.join(args.out, "preview.png"))
+    write_preview(terrain, roads, density, e, sea, os.path.join(args.out, "preview.png"), bld)
     log("Termine :", json.dumps(meta["counts"], ensure_ascii=False))
 
 
-def write_preview(terrain, roads, density, e, sea, path):
+def write_preview(terrain, roads, density, e, sea, path, bld=None):
     from PIL import Image
     lut = np.zeros((256, 3), dtype=np.float32)
     for k, c in PREVIEW_COLORS.items():
@@ -459,6 +502,10 @@ def write_preview(terrain, roads, density, e, sea, path):
                 5: (160, 130, 90), 6: (60, 60, 60)}
     for k, c in road_col.items():
         img[roads == k] = c
+    if bld is not None:
+        img[bld == 1] = (150, 132, 112)
+        img[bld == 3] = (170, 150, 120)
+        img[bld == 2] = (70, 60, 56)
     img = np.clip(img, 0, 255).astype(np.uint8)
     Image.fromarray(img).save(path, optimize=True)
 
