@@ -9,7 +9,7 @@ var zone: ZoneData
 var world: ChunkManager
 var player: Player
 var camera: Camera2D
-var joystick: VirtualJoystick
+var joystick: TouchStick
 var map_view: MapView
 var place_label: Label
 var debug_label: Label
@@ -149,7 +149,7 @@ func _build_ui() -> void:
 	var hud := CanvasLayer.new()
 	hud.name = "Interface"
 	add_child(hud)
-	joystick = VirtualJoystick.new()
+	joystick = TouchStick.new()
 	hud.add_child(joystick)
 	place_label = Label.new()
 	place_label.set_anchors_preset(Control.PRESET_CENTER_TOP)

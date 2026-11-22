@@ -1,4 +1,4 @@
-class_name VirtualJoystick
+class_name TouchStick
 extends Control
 ## Joystick tactile : apparaît là où le pouce se pose, dans la moitié gauche.
 
