@@ -14,7 +14,9 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ANIMS = [("repos", "breathing_idle"), ("marche", "walking"), ("course", "running")]
+ANIMS = [("repos", "breathing_idle"), ("marche", "walking"), ("course", "running"),
+         ("ramasser", "ramasser"), ("frapper", "frapper"), ("boire", "boire")]
+# (l'animation « dormir » générée n'était pas réussie : le jeu couche le sprite au repos)
 DIRS = ["south", "west", "east", "north"]
 
 
@@ -25,6 +27,10 @@ def main(name):
         for d in DIRS:
             files = sorted(glob.glob(os.path.join(src, "animations", folder, d, "*.png")),
                            key=lambda p: int(os.path.basename(p)[:-4].split("_")[-1]))
+            if not files and anim in ("ramasser", "frapper", "boire", "dormir"):
+                # direction absente : on reprend celle du sud
+                files = sorted(glob.glob(os.path.join(src, "animations", folder, "south", "*.png")),
+                               key=lambda p: int(os.path.basename(p)[:-4].split("_")[-1]))
             if not files:
                 files = [os.path.join(src, "rotations", d + ".png")]
             rows.append((anim, d, [Image.open(f).convert("RGBA") for f in files]))

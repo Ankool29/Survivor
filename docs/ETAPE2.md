@@ -2,7 +2,17 @@
 
 Objectif : donner une raison à chaque sortie. Le joueur doit boire, manger, dormir et se protéger du froid ; il ramasse, fabrique ses premiers outils, fouille les maisons et installe un premier camp.
 
-Statut : **proposition, à valider**. Les chiffres sont des valeurs de départ, à régler en jouant.
+Statut : **validé et intégré** (novembre 2026). Les chiffres sont des valeurs de départ, à régler en jouant.
+
+Choix retenus : départ en début d'automne, vitesses des besoins du cahier, départ les mains vides (16 cases de sac).
+
+Écarts avec la proposition :
+- la gourde est une **bouteille en plastique** trouvée dans les maisons (vide, eau non traitée, eau bouillie) ;
+- le froid est plus doux que prévu (seuil de confort à 10 °C ressentis), sinon on mourait en quelques minutes sous la pluie ;
+- dormir : le personnage est couché en faisant pivoter le sprite au repos (l'animation générée n'était pas réussie) ;
+- les icônes d'interface (jauges, météo) ne sont pas faites : jauges en couleurs avec leur nom ;
+- on fouille les **meubles** (armoire, frigo, rayon, établi…) placés contre les murs des vrais bâtiments, et les épaves de voitures ;
+- commandes clavier pour tester sur ordinateur : E ou Espace pour l'action, I ou Tab pour le sac.
 
 Hors étape 2 (étapes suivantes) : animaux et chasse, tribus, véhicules, voyage rapide, maladies détaillées, agriculture.
 
@@ -15,7 +25,7 @@ Hors étape 2 (étapes suivantes) : animaux et chasse, tribus, véhicules, voyag
 | Départ | Début de l'automne, 8 h du matin (question ouverte n° 1) |
 | Nuit | Écran assombri ; de 21 h à 6 h on voit à environ 8 cases autour de soi, davantage près d'un feu ou avec une torche |
 | Météo | Beau, nuageux, pluie, brouillard ; tirée chaque demi-journée selon la saison. La pluie mouille le joueur |
-| Pause | Le monde s'arrête quand l'appli est fermée ou mise en arrière-plan |
+| Pause | Le monde s'arrête quand l'appli est fermée ou mise en arrière-plan, et pendant que le sac ou la carte sont ouverts |
 
 ## 2. Les besoins
 

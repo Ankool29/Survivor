@@ -18,6 +18,9 @@ var moving := false
 var _anim := 0.0
 var _sprite: AnimatedSprite2D     ## sprite PixelLab, si présent
 var _running_now := false
+var _action := ""                 ## animation ponctuelle en cours (ramasser, frapper, boire)
+var sleeping := false
+var _rest_offset := Vector2.ZERO
 
 const SHEET := "res://assets/characters/joueur.png"
 const SHEET_META := "res://assets/characters/joueur.json"
@@ -32,12 +35,13 @@ func _ready() -> void:
 	var fh := int(meta["frame_h"])
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
-	var fps := {"repos": 5.0, "marche": 9.0, "course": 12.0}
+	var fps := {"repos": 5.0, "marche": 9.0, "course": 12.0, "ramasser": 10.0, "frapper": 11.0, "boire": 7.0, "dormir": 3.0}
+	var once := ["ramasser", "frapper", "boire", "dormir"]
 	for a in meta["anims"]:
 		var name := "%s_%s" % [a["name"], a["dir"]]
 		frames.add_animation(name)
 		frames.set_animation_speed(name, fps.get(a["name"], 8.0))
-		frames.set_animation_loop(name, true)
+		frames.set_animation_loop(name, not (a["name"] in once))
 		for i in int(a["frames"]):
 			var at := AtlasTexture.new()
 			at.atlas = tex
@@ -47,8 +51,47 @@ func _ready() -> void:
 	_sprite.sprite_frames = frames
 	_sprite.centered = false
 	_sprite.position = Vector2(-fw / 2.0, -float(meta["feet_y"]) - 1.0)
+	_rest_offset = _sprite.position
 	add_child(_sprite)
 	_sprite.play("repos_south")
+	_sprite.animation_finished.connect(func():
+		if _action != "dormir":
+			_action = "")
+
+
+## Joue une animation ponctuelle (si elle existe) : ramasser, frapper, boire, dormir.
+func play_action(anim: String) -> void:
+	if _sprite == null:
+		return
+	var name := anim + "_" + _direction_name()
+	if not _sprite.sprite_frames.has_animation(name):
+		name = anim + "_south"
+	if not _sprite.sprite_frames.has_animation(name):
+		return
+	_action = anim
+	_sprite.play(name)
+
+
+func set_sleeping(on: bool) -> void:
+	sleeping = on
+	if _sprite == null:
+		return
+	if on:
+		# allongé : sprite au repos couché sur le côté
+		_action = "dormir"
+		_sprite.play("repos_east")
+		_sprite.pause()
+		_sprite.centered = true
+		_sprite.rotation = -PI / 2.0
+		_sprite.position = Vector2(0, -10)
+		_sprite.modulate = Color(0.85, 0.85, 0.9)
+	else:
+		_action = ""
+		_sprite.centered = false
+		_sprite.rotation = 0.0
+		_sprite.position = _rest_offset
+		_sprite.modulate = Color.WHITE
+		_update_sprite()
 
 
 func _direction_name() -> String:
@@ -58,6 +101,11 @@ func _direction_name() -> String:
 
 
 func _update_sprite() -> void:
+	if _action != "":
+		if moving and _action != "dormir":
+			_action = ""
+		else:
+			return
 	var anim := "repos"
 	if moving:
 		anim = "course" if _running_now else "marche"

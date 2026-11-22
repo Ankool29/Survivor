@@ -10,6 +10,7 @@ const TILE := Tiles.SIZE
 
 var zone: ZoneData
 var gen: WorldGen
+var mods: WorldMods            ## changements du joueur (fournis par main.gd)
 var ground: TileMapLayer
 var shade_root: Node2D
 var entities: Node2D        ## parent trié en Y : décor + joueur
@@ -208,6 +209,7 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	var x0 := key.x * CHUNK
 	var y0 := key.y * CHUNK
+	_apply_structures(c)
 	if _has_base:
 		if c.dual.is_empty():
 			c.dual = _compute_dual(c, x0, y0)
@@ -224,12 +226,7 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 			if d in Tiles.WALL_DECOR and _walls_wang:
 				d = -1
 			if d >= 0:
-				var objs: Array = Tiles.decor_sources.get(d, [])
-				if not objs.is_empty():
-					var pick := ((cell.x * 73856093) ^ (cell.y * 19349663)) & 0xFFFF
-					decor.set_cell(cell, objs[pick % objs.size()], Vector2i.ZERO)
-				elif d < Tiles.DECOR_COUNT:
-					decor.set_cell(cell, Tiles.SRC_DECOR, Tiles.decor_coords(d))
+				_draw_decor(cell, d)
 	var s := Sprite2D.new()
 	s.texture = ImageTexture.create_from_image(c.shade)
 	s.region_enabled = true
@@ -332,6 +329,75 @@ func _apply_dual(c: WorldGen.ChunkData) -> void:
 		var src := Tiles.SRC_WANG + layer
 		for k in range(0, arr.size(), 3):
 			tl.set_cell(Vector2i(arr[k], arr[k + 1]), src, Vector2i(arr[k + 2], 0))
+
+
+func _draw_decor(cell: Vector2i, d: int) -> void:
+	if d < 0:
+		decor.erase_cell(cell)
+		return
+	var objs: Array = Tiles.decor_sources.get(d, [])
+	if not objs.is_empty():
+		var names: Array = Tiles.DECOR_VARIANTS[d]
+		var name: String = Tiles.decor_name(d, cell)
+		# la source correspond à la variante si elle existe, sinon la première disponible
+		var idx := mini(names.find(name), objs.size() - 1)
+		decor.set_cell(cell, objs[maxi(idx, 0)] if objs.size() == names.size() else objs[Tiles.decor_pick(d, cell) % objs.size()], Vector2i.ZERO)
+	elif d < Tiles.DECOR_COUNT:
+		decor.set_cell(cell, Tiles.SRC_DECOR, Tiles.decor_coords(d))
+	else:
+		decor.erase_cell(cell)
+
+
+func _chunk_at(cell: Vector2i) -> WorldGen.ChunkData:
+	return _chunks.get(chunk_of_cell(cell))
+
+
+## Décor présent sur une case (-1 si rien ou morceau non chargé).
+func decor_at(cell: Vector2i) -> int:
+	var c := _chunk_at(cell)
+	if c == null:
+		return -1
+	return c.decor[(cell.y - c.cy * CHUNK) * CHUNK + (cell.x - c.cx * CHUNK)]
+
+
+## Type de sol (Tiles.G_*) d'une case chargée, -1 sinon.
+func ground_at(cell: Vector2i) -> int:
+	var c := _chunk_at(cell)
+	if c == null:
+		return -1
+	return c.ground[(cell.y - c.cy * CHUNK) * CHUNK + (cell.x - c.cx * CHUNK)] / Tiles.VARIANTS
+
+
+## Pose ou retire un décor (constructions) et met à jour l'affichage et les obstacles.
+func set_decor(cell: Vector2i, d: int, flag := WorldGen.F_TRUNK) -> void:
+	var c := _chunk_at(cell)
+	if c == null:
+		return
+	var i := (cell.y - c.cy * CHUNK) * CHUNK + (cell.x - c.cx * CHUNK)
+	c.decor[i] = d
+	if d < 0:
+		c.flags[i] &= ~(WorldGen.F_TRUNK | WorldGen.F_BLOCK)
+	else:
+		c.flags[i] |= flag
+	_draw_decor(cell, d)
+
+
+const STRUCT_DECOR := {"feu": Tiles.D_FEU_ETEINT, "abri": Tiles.D_ABRI, "coffre": Tiles.D_COFFRE}
+
+
+func structure_decor(st: Dictionary) -> int:
+	if st.get("type", "") == "feu":
+		return Tiles.D_FEU_ALLUME if float(st.get("feu", 0)) > 0.0 else Tiles.D_FEU_ETEINT
+	return STRUCT_DECOR.get(st.get("type", ""), -1)
+
+
+func _apply_structures(c: WorldGen.ChunkData) -> void:
+	if mods == null:
+		return
+	for cell in mods.structures_in(Rect2i(c.cx * CHUNK, c.cy * CHUNK, CHUNK, CHUNK)):
+		var i: int = (cell.y - c.cy * CHUNK) * CHUNK + (cell.x - c.cx * CHUNK)
+		c.decor[i] = structure_decor(mods.structure_at(cell))
+		c.flags[i] |= WorldGen.F_TRUNK
 
 
 func _unload(key: Vector2i) -> void:

@@ -56,6 +56,16 @@ const D_ARBRE_MORT := 15
 const D_SOUCHE := 16
 const D_SAULE := 17
 const D_POTEAU := 18
+# Meubles (à fouiller) et constructions du joueur (étape 2)
+const D_MEUBLE := 19
+const D_RAYON := 20
+const D_PHARMA := 21
+const D_ETABLI := 22
+const D_FOIN := 23
+const D_FEU_ETEINT := 24
+const D_FEU_ALLUME := 25
+const D_ABRI := 26
+const D_COFFRE := 27
 const DECOR_COLS := 8
 
 ## Objets de décor PixelLab (tailles variées) : res://assets/decor/<nom>.png,
@@ -79,6 +89,15 @@ const DECOR_VARIANTS := {
 	D_SOUCHE: ["souche", "rondins"],
 	D_SAULE: ["saule"],
 	D_POTEAU: ["poteau"],
+	D_MEUBLE: ["armoire", "commode", "etagere", "carton", "frigo", "lit", "caisse", "table"],
+	D_RAYON: ["rayon", "carton"],
+	D_PHARMA: ["armoire_pharma"],
+	D_ETABLI: ["etabli", "caisse"],
+	D_FOIN: ["foin", "caisse"],
+	D_FEU_ETEINT: ["feu_eteint"],
+	D_FEU_ALLUME: ["feu_allume"],
+	D_ABRI: ["abri"],
+	D_COFFRE: ["coffre"],
 }
 const DECOR_META := "res://assets/decor/decor.json"
 const SRC_OBJ := 100
@@ -124,6 +143,18 @@ static func cliff_lookup(name: String) -> Dictionary:
 	for k in d["lookup"]:
 		out[int(k)] = int(d["lookup"][k])
 	return out
+
+
+## Variante tirée pour un décor sur une case (même tirage pour l'affichage et le jeu).
+static func decor_pick(d: int, cell: Vector2i) -> int:
+	return ((cell.x * 73856093) ^ (cell.y * 19349663)) & 0xFFFF
+
+
+static func decor_name(d: int, cell: Vector2i) -> String:
+	var names: Array = DECOR_VARIANTS.get(d, [])
+	if names.is_empty():
+		return ""
+	return names[decor_pick(d, cell) % names.size()]
 
 
 static func wang_path(name: String) -> String:

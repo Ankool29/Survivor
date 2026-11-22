@@ -54,3 +54,14 @@ pas d'objets d'inventaire, pas d'intérieurs détaillés : ce sera pour les lots
 
 Les réponses brutes de PixelLab sont gardées dans `tools/sprites/raw/` ; `tools/sprites/import_wang.py`
 les convertit en planches pour le jeu (`game/assets/tiles/`).
+
+# Lot de sprites 2 — Survie de base
+
+| Élément | Statut | Notes |
+| --- | --- | --- |
+| 34 icônes d'objets (32 × 32) | intégrées | une planche de l'outil « objet 1 direction » |
+| 16 meubles et constructions (feu éteint et allumé, abri, coffre, armoire, frigo, rayon, établi, lit…) | intégrés | une planche de 16 |
+| Animations du joueur : ramasser, frapper, boire (4 directions) | intégrées | animations personnalisées, 1 génération par direction |
+| Dormir | abandonné | l'animation générée ne couchait pas le personnage |
+
+Coût du lot 2 : environ 35 générations. Total depuis le début : environ 350 sur 2 000.

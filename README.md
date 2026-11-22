@@ -5,7 +5,7 @@ rendue à la nature 30 ans après une pandémie. Godot 4, jouable sur mobile.
 
 - Concept : [Concept — Survie post-apo en France](https://claude.ai/artifact/P5sUvAzE4xM9eoHhxtnWb5)
 - Étape 1 (terminée) : [docs/ETAPE1.md](docs/ETAPE1.md) — monde à l'échelle réelle autour de Quimperlé
-- Étape 2 (proposition à valider) : [docs/ETAPE2.md](docs/ETAPE2.md) — survie de base
+- Étape 2 (en test) : [docs/ETAPE2.md](docs/ETAPE2.md) — survie de base
 
 ## Organisation
 
@@ -29,7 +29,7 @@ majsv
 ```
 
 Ensuite, à chaque mise à jour : `majsv`, puis ouvrir le projet `Godot/survivor` dans l'éditeur.
-Le projet vise Godot 4.5.
+Le projet vise Godot 4.7.
 
 ## Données
 

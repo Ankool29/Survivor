@@ -80,6 +80,78 @@
    "dir": "north",
    "row": 11,
    "frames": 6
+  },
+  {
+   "name": "ramasser",
+   "dir": "south",
+   "row": 12,
+   "frames": 7
+  },
+  {
+   "name": "ramasser",
+   "dir": "west",
+   "row": 13,
+   "frames": 7
+  },
+  {
+   "name": "ramasser",
+   "dir": "east",
+   "row": 14,
+   "frames": 7
+  },
+  {
+   "name": "ramasser",
+   "dir": "north",
+   "row": 15,
+   "frames": 7
+  },
+  {
+   "name": "frapper",
+   "dir": "south",
+   "row": 16,
+   "frames": 7
+  },
+  {
+   "name": "frapper",
+   "dir": "west",
+   "row": 17,
+   "frames": 7
+  },
+  {
+   "name": "frapper",
+   "dir": "east",
+   "row": 18,
+   "frames": 7
+  },
+  {
+   "name": "frapper",
+   "dir": "north",
+   "row": 19,
+   "frames": 7
+  },
+  {
+   "name": "boire",
+   "dir": "south",
+   "row": 20,
+   "frames": 7
+  },
+  {
+   "name": "boire",
+   "dir": "west",
+   "row": 21,
+   "frames": 7
+  },
+  {
+   "name": "boire",
+   "dir": "east",
+   "row": 22,
+   "frames": 7
+  },
+  {
+   "name": "boire",
+   "dir": "north",
+   "row": 23,
+   "frames": 7
   }
  ]
 }

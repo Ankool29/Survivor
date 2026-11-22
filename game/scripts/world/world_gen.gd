@@ -196,10 +196,34 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 	_put(c, lx, ly, Tiles.G_CARRELAGE if b == 3 else Tiles.G_SOL_BATIMENT, h & 3)
 	c.flags[i] = F_INDOOR
 	var a := float((h >> 10) & 0xFFFF) / 65536.0
-	if a < 0.025:
+	# meubles contre les murs, à fouiller
+	var by_wall := zone.b_at(x + 1, y) == 2 or zone.b_at(x - 1, y) == 2 or zone.b_at(x, y - 1) == 2
+	if by_wall and a < 0.06:
+		_deco(c, lx, ly, _furniture(x, y, b), F_TRUNK)
+	elif a < 0.02:
 		_deco(c, lx, ly, Tiles.D_GRAVATS)
-	elif a < 0.035:
+	elif a < 0.028:
 		_deco(c, lx, ly, Tiles.D_BUISSON)
+
+
+## Meuble selon le type du bâtiment (lieu notable le plus proche, ou zone industrielle).
+func _furniture(x: int, y: int, b: int) -> int:
+	if b == 3:
+		var best := ""
+		var bd := 40.0 * 40.0
+		for p in _pois_by_chunk.get(Vector2i(x / CHUNK, y / CHUNK), []):
+			var d2 := Vector2(float(p["x"]) - x, float(p["y"]) - y).length_squared()
+			if d2 < bd:
+				bd = d2
+				best = p["kind"]
+		match best:
+			"supermarche", "epicerie", "magasin", "marche": return Tiles.D_RAYON
+			"pharmacie", "hopital": return Tiles.D_PHARMA
+			"garage", "station_service", "quincaillerie", "entrepot", "pompiers": return Tiles.D_ETABLI
+			"ferme": return Tiles.D_FOIN
+	if zone.t_at(x, y) == ZoneData.T_INDUSTRIEL:
+		return Tiles.D_ETABLI
+	return Tiles.D_MEUBLE
 
 
 func _cell_base(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
