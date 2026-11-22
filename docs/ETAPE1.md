@@ -10,8 +10,8 @@ Concept général : [Concept — Survie post-apo en France](https://claude.ai/ar
 | Sujet | Choix |
 | --- | --- |
 | Vue | De dessus en 3/4, tuiles de 32 × 32 px |
-| Échelle | 32 cases par km (une case ≈ 31 m réels, lue comme 1 à 2 m) |
-| Zone | 50 × 50 km centrés sur Quimperlé, soit 1 600 × 1 600 cases |
+| Échelle | **Réelle** : 500 cases par km, une case = 2 m (décision de novembre 2026, après essai ; l'échelle compressée de 32 cases par km est abandonnée) |
+| Zone | 50 × 50 km centrés sur Quimperlé, soit 25 000 × 25 000 cases, en 625 tuiles de 1 024 cases (2 km) |
 | Époque | 30 ans après la pandémie |
 | Mort | Définitive ; nouvelle partie, départ tiré au hasard |
 | Moteur | Godot 4.5, GDScript |
@@ -87,3 +87,11 @@ Zone `quimperle_reel` : Quimperlé sur 5 × 5 km, **1 case = 2 m** (500 cases pa
 Retour après essai : nettement mieux qu'à l'échelle compressée, mais trop en ruine (voir `A_CORRIGER.md`, n° 10).
 
 À décider : passer toute la carte à l'échelle réelle (et le découpage des données en paquets que cela demande), garder les deux, ou une échelle intermédiaire.
+
+## Passage de toute la zone à l'échelle réelle
+
+- Données découpées en tuiles de 1 024 × 1 024 cases (`tiles/<tx>_<ty>.bin.gz` : sol, voies, bâtiments) ; les tuiles entièrement marines ne sont pas écrites (510 tuiles sur 625).
+- Relief commun à basse résolution (une valeur tous les 8 m), interpolé dans le jeu.
+- Le jeu charge les tuiles à la demande (12 en mémoire au plus, environ 36 Mo) ; la fabrication des morceaux reste en arrière-plan.
+- Taille de la zone : 34 Mo. La France entière devra être téléchargée par région.
+- Conséquence voulue : les distances réelles donnent tout leur intérêt au voyage rapide et aux moyens de transport.
