@@ -28,6 +28,10 @@ var surv: Survival
 var inv: Inventory
 var mods: WorldMods
 var actions: Actions
+var fauna: Fauna
+var crouch_button: Button
+var _aim_line: Line2D
+var _hour_t := 0.0
 var seed_value := 0
 var _target := {}
 var _cont_inv: Inventory          ## contenu ouvert (coffre, meuble, épave)
@@ -74,6 +78,17 @@ func _ready() -> void:
 	player.add_child(camera)
 	camera.make_current()
 	map_view.zone = zone
+	fauna = Fauna.new()
+	fauna.name = "Faune"
+	add_child(fauna)
+	fauna.setup(world, zone)
+	fauna.bitten.connect(_on_bitten)
+	_aim_line = Line2D.new()
+	_aim_line.width = 1.5
+	_aim_line.default_color = Color(1, 0.95, 0.7, 0.55)
+	_aim_line.z_index = 15
+	_aim_line.visible = false
+	world.add_child(_aim_line)
 	atmo = Atmosphere.new()
 	add_child(atmo)
 	atmo.setup(world, $Ciel, player)
@@ -103,6 +118,10 @@ func _start(s: int) -> void:
 	hud.surv = surv
 	atmo.surv = surv
 	bag.inv = inv
+	inv.clock = surv.get_minutes
+	fauna.reset(s, mods, surv, player)
+	player.aiming = false
+	_set_crouch(false)
 	death_panel.visible = false
 	sleep_overlay.visible = false
 
@@ -137,7 +156,8 @@ func save_game() -> void:
 		return
 	var data := {"version": 1, "zone": zone.name, "seed": seed_value,
 		"x": player.position.x, "y": player.position.y,
-		"survie": surv.to_data(), "sac": inv.to_data(), "monde": mods.to_data()}
+		"survie": surv.to_data(), "sac": inv.to_data(), "monde": mods.to_data(),
+		"faune": fauna.to_data()}
 	var f := FileAccess.open(SAVE_FILE, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -154,6 +174,7 @@ func load_game() -> bool:
 	surv.from_data(data.get("survie", {}))
 	mods.from_data(data.get("monde", {}), surv.minutes)
 	inv.from_data(data.get("sac", []))
+	fauna.from_data(data.get("faune", {}))
 	inv.resize(24 if surv.sac else 16)
 	player.position = Vector2(float(data["x"]), float(data["y"]))
 	world.ensure_cell(player.cell())
@@ -175,8 +196,8 @@ func _on_died(cause: String) -> void:
 	if FileAccess.file_exists(SAVE_FILE):
 		DirAccess.remove_absolute(SAVE_FILE)
 	var lbl: Label = death_panel.get_node("Texte")
-	lbl.text = "Tu es mort de %s.\n\nJours survécus : %d\nDistance parcourue : %.1f km\nMeubles fouillés : %d" % [
-		cause, surv.days_survived(), surv.distance_m / 1000.0, surv.fouilles]
+	lbl.text = "Tu es mort de %s.\n\nJours survécus : %d\nDistance parcourue : %.1f km\nMeubles fouillés : %d\nBêtes chassées : %d" % [
+		cause, surv.days_survived(), surv.distance_m / 1000.0, surv.fouilles, surv.chasse]
 	death_panel.visible = true
 
 
@@ -198,6 +219,9 @@ func _process(delta: float) -> void:
 	world.update_view(Rect2(player.position - vp * 0.5, vp))
 	if not paused:
 		_tick_survival(delta)
+	fauna.paused = paused
+	fauna.update(delta)
+	_update_aim()
 	atmo.update(_lit_fires())
 	_place_timer -= delta
 	if _place_timer <= 0.0:
@@ -208,7 +232,8 @@ func _process(delta: float) -> void:
 	if _action_timer <= 0.0 and not paused:
 		_action_timer = 0.2
 		_target = actions.find_target(player.position, player.facing)
-		hud.set_action("" if surv.sleeping else actions.label_for(_target, player.position))
+		hud.set_action("" if surv.sleeping else _action_label())
+		hud.shoot_button.visible = not surv.sleeping and inv.has("arc") and inv.has("fleche")
 	_save_timer -= delta
 	if _save_timer <= 0.0:
 		_save_timer = AUTOSAVE_S
@@ -231,6 +256,12 @@ func _tick_survival(delta: float) -> void:
 	for c in actions.burn(surv.minutes - before):
 		if c.distance_to(cell) < 12:
 			hud.show_message("Le feu s'est éteint.")
+	fauna.update_traps(surv.minutes - before)
+	_hour_t += surv.minutes - before
+	if _hour_t >= 60.0:
+		_hour_t = 0.0
+		if inv.spoil(surv.minutes) > 0:
+			hud.show_message("De la nourriture s'est gâtée.")
 	surv.distance_m += player.position.distance_to(_last_pos) / Tiles.SIZE * zone.cell_m
 	_last_pos = player.position
 	if surv.sleeping:
@@ -269,10 +300,163 @@ func _lit_fires() -> Array:
 
 # --- Actions ------------------------------------------------------------------
 
+## Arme de corps à corps : [objet, dégâts, portée en cases].
+func _weapon() -> Array:
+	for w in [["lance", 25.0, 2.2], ["hache", 18.0, 1.5], ["couteau", 12.0, 1.3]]:
+		if inv.has(w[0]):
+			return w
+	return ["", 4.0, 1.0]
+
+
+## Action proposée : la faune d'abord (frapper, dépecer, ramasser une flèche).
+func _action_label() -> String:
+	var a := fauna.animal_in_reach(player.position, player.facing, _weapon()[2])
+	if a:
+		return "Frapper le " + String(a.sp["nom"]).split(" ")[0]
+	var c := fauna.carcass_near(player.position)
+	if c:
+		return "Dépecer le " + String(c.sp["nom"]).split(" ")[0]
+	if not fauna.pickup_near(player.position).is_empty():
+		return "Ramasser la flèche"
+	return actions.label_for(_target, player.position)
+
+
+## Fait passer du temps de jeu (dépecer, cuire, pêcher…).
+func _spend(minutes: float) -> void:
+	var before := surv.minutes
+	surv.tick(minutes)
+	actions.burn(surv.minutes - before)
+	fauna.update_traps(surv.minutes - before)
+
+
+func _fauna_action(label: String) -> bool:
+	if label.begins_with("Frapper"):
+		var w := _weapon()
+		var a := fauna.animal_in_reach(player.position, player.facing, w[2])
+		if a == null:
+			return true
+		player.facing = (a.position - player.position).normalized()
+		player.play_action("frapper")
+		a.hurt(float(w[1]) * randf_range(0.8, 1.2), player.position)
+		if w[0] != "" and not inv.wear(w[0]):
+			hud.show_message("Ton arme s'est cassée.")
+		if a.is_dead():
+			hud.show_message("Le %s est mort." % String(a.sp["nom"]))
+		return true
+	if label.begins_with("Dépecer"):
+		var c := fauna.carcass_near(player.position)
+		if c == null:
+			return true
+		if not inv.has("couteau"):
+			hud.show_message("Il faut un couteau pour dépecer.")
+			return true
+		player.play_action("ramasser")
+		_spend(float(c.sp.get("depecer", 20)))
+		inv.wear("couteau")
+		var got: Dictionary = c.sp["butin"].duplicate()
+		var old := surv.minutes - c.dead_at > 1440.0
+		if old:
+			for id in ["viande", "petite_viande"]:
+				if got.has(id):
+					got["viande_avariee"] = int(got.get("viande_avariee", 0)) + int(got[id])
+					got.erase(id)
+		if c.arrows > 0:
+			got["fleche"] = c.arrows
+		fauna.remove_carcass(c)
+		hud.show_message(actions._give(got, "La carcasse était trop vieille." if old else "")["msg"])
+		return true
+	if label == "Ramasser la flèche":
+		var pk := fauna.pickup_near(player.position)
+		if not pk.is_empty() and inv.add("fleche") == 0:
+			fauna.take_pickup(pk)
+			player.play_action("ramasser")
+		return true
+	return false
+
+
+func _on_bitten(dmg: float, who: String) -> void:
+	if surv.dead:
+		return
+	if surv.sleeping:
+		_wake("Tu te réveilles : un %s t'attaque !" % who)
+	surv.hurt(dmg * randf_range(0.8, 1.2), "un " + who)
+	if randf() < 0.35:
+		surv.saigne = maxf(surv.saigne, 90.0)
+		hud.show_message("Le %s te mord : tu saignes !" % who)
+	else:
+		hud.show_message("Le %s te mord !" % who)
+	var tw := create_tween()
+	player.modulate = Color(1.0, 0.45, 0.45)
+	tw.tween_property(player, "modulate", Color.WHITE, 0.35)
+
+
+func _set_crouch(on: bool) -> void:
+	if player == null or fauna == null:
+		return
+	player.set_crouch(on)
+	fauna.crouching = on
+	hud.crouching = on
+	if crouch_button:
+		crouch_button.set_pressed_no_signal(on)
+	if on and run_button:
+		run_button.set_pressed_no_signal(false)
+		player.run = false
+
+
+# --- Arc : maintenir « Tirer » pour viser, relâcher pour tirer ----------------------
+
+func _aim_dir() -> Vector2:
+	var t := fauna.aim_target(player.position, player.facing)
+	if t:
+		# on vise un peu devant une bête qui court
+		var start := player.position + Vector2(0, -12)
+		var lead := start.distance_to(t.body_center()) / (Fauna.ARROW_SPEED * Tiles.SIZE)
+		return (t.body_center() + t.vel * lead - start).normalized()
+	return player.facing.normalized()
+
+
+func _update_aim() -> void:
+	if not player.aiming:
+		_aim_line.visible = false
+		return
+	var start := player.position + Vector2(0, -12)
+	var t := fauna.aim_target(player.position, player.facing)
+	var end := start + _aim_dir() * Fauna.ARROW_RANGE * Tiles.SIZE
+	if t:
+		end = t.body_center()
+	_aim_line.points = PackedVector2Array([start, end])
+	_aim_line.default_color = Color(1.0, 0.5, 0.4, 0.8) if t else Color(1, 0.95, 0.7, 0.45)
+	_aim_line.visible = true
+
+
+func _on_shoot_down() -> void:
+	if surv.dead or surv.sleeping or not (inv.has("arc") and inv.has("fleche")):
+		return
+	player.aiming = true
+
+
+func _on_shoot_up() -> void:
+	if not player.aiming:
+		return
+	player.aiming = false
+	if not (inv.has("arc") and inv.has("fleche")):
+		return
+	var dir := _aim_dir()
+	player.facing = dir
+	inv.remove("fleche")
+	fauna.shoot(player.position, dir, 30.0)
+	if not inv.wear("arc"):
+		hud.show_message("L'arc s'est cassé.")
+
+
 func _on_action() -> void:
 	if surv.dead or surv.sleeping:
 		return
-	var label := actions.label_for(_target, player.position)
+	var label := _action_label()
+	if _fauna_action(label):
+		_action_timer = 0.0
+		return
+
 	var r := actions.run(_target, player.position)
 	if label.begins_with("Couper") or label == "Fouiller les débris":
 		player.play_action("frapper")
@@ -289,6 +473,8 @@ func _on_action() -> void:
 	if r.has("container"):
 		_open_furniture(r["container"], r["title"])
 		return
+	if r.has("carcass"):
+		fauna.add_carcass(r["carcass"], (Vector2(r["at"]) + Vector2(0.5, 0.7)) * Tiles.SIZE)
 	hud.show_message(r.get("msg", ""))
 	_action_timer = 0.0
 
@@ -335,6 +521,7 @@ func _open_furniture(cell: Vector2i, title: String) -> void:
 
 func _open_container(data: Array, title: String, save: Callable) -> void:
 	_cont_inv = Inventory.new(12)
+	_cont_inv.clock = surv.get_minutes
 	_cont_inv.from_data(data)
 	_cont_inv.resize(12)
 	_cont_save = save
@@ -353,9 +540,22 @@ func _on_cook_item(index: int) -> void:
 		hud.show_message("Il faut un feu allumé tout près.")
 		return
 	var id: String = s["id"]
+	var c: Array = Items.COOK[id]
 	inv.remove(id)
-	inv.add("bouteille_bouillie" if id == "bouteille_eau" else "repas")
-	hud.show_message("L'eau a bouilli : elle est potable." if id == "bouteille_eau" else "Repas cuit.")
+	inv.add(c[0])
+	_spend(float(c[2]))
+	hud.show_message("L'eau a bouilli : elle est potable." if id == "bouteille_eau" else "%s : prêt." % Items.name_of(c[0]))
+
+
+func _on_smoke_item(index: int) -> void:
+	var s: Dictionary = inv.slots[index]
+	if s.is_empty() or actions.near_fire(player.position, 3).x < 0:
+		return
+	var id: String = s["id"]
+	inv.remove(id)
+	inv.add(Items.SMOKE[id])
+	_spend(60.0)
+	hud.show_message("Viande fumée : elle se gardera longtemps.")
 
 
 func _on_use_item(index: int) -> void:
@@ -462,7 +662,7 @@ func _on_craft(r: Dictionary) -> void:
 		hud.show_message("%s posé devant toi." % r["nom"])
 		bag.hide_panel()
 	else:
-		var left := inv.add(r["id"])
+		var left := inv.add(r["id"], int(r.get("n", 1)))
 		hud.show_message(("Fabriqué : " + r["nom"]) if left == 0 else "Sac plein.")
 	bag.refresh()
 
@@ -513,6 +713,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		match event.physical_keycode:
 			KEY_E, KEY_SPACE: _on_action()
 			KEY_I, KEY_TAB: _toggle_bag()
+			KEY_C: _set_crouch(not player.crouch)
+			KEY_F: _on_shoot_down()
+	elif event is InputEventKey and not event.pressed and event.physical_keycode == KEY_F:
+		_on_shoot_up()
 
 
 func set_zoom(z: float) -> void:
@@ -555,6 +759,8 @@ func _build_ui() -> void:
 	hud.action_pressed.connect(_on_action)
 	hud.bag_pressed.connect(_toggle_bag)
 	hud.sleep_pressed.connect(_on_sleep_button)
+	hud.shoot_down.connect(_on_shoot_down)
+	hud.shoot_up.connect(_on_shoot_up)
 	var bar := VBoxContainer.new()
 	bar.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	bar.position = Vector2(-SurvivalHud.RIGHT_MARGIN - 130, 40)
@@ -562,9 +768,15 @@ func _build_ui() -> void:
 	bar.add_theme_constant_override("separation", 6)
 	ui.add_child(bar)
 	bar.add_child(_button("Carte", _open_map))
-	run_button = _button("Courir", func(): player.run = run_button.button_pressed)
+	run_button = _button("Courir", func():
+		player.run = run_button.button_pressed
+		if player.run:
+			_set_crouch(false))
 	run_button.toggle_mode = true
 	bar.add_child(run_button)
+	crouch_button = _button("S'accroupir", func(): _set_crouch(crouch_button.button_pressed))
+	crouch_button.toggle_mode = true
+	bar.add_child(crouch_button)
 	var zoom_row := HBoxContainer.new()
 	zoom_row.add_theme_constant_override("separation", 6)
 	zoom_row.add_child(_button(" − ", func(): set_zoom(camera.zoom.x / 1.4)))
@@ -574,6 +786,7 @@ func _build_ui() -> void:
 	ui.add_child(bag)
 	bag.use_item.connect(_on_use_item)
 	bag.cook_item.connect(_on_cook_item)
+	bag.smoke_item.connect(_on_smoke_item)
 	bag.fire_check = func(): return actions.near_fire(player.position, 3).x >= 0
 	bag.drop_item.connect(_on_drop_item)
 	bag.store_item.connect(_on_store_item)

@@ -43,7 +43,41 @@ const DB := {
 	"sac": {"nom": "Sac à dos", "pile": 1, "utiliser": "Équiper"},
 	"allumettes": {"nom": "Allumettes", "pile": 20},
 	"bougie": {"nom": "Bougie", "pile": 10},
+	# Étape 3 : chasse et pêche. « garde » : minutes avant de se gâter.
+	"petite_viande": {"nom": "Petite viande crue", "pile": 10, "faim": 8, "malade": 0.4, "utiliser": "Manger cru", "garde": 2880},
+	"viande": {"nom": "Viande crue", "pile": 10, "faim": 15, "malade": 0.5, "utiliser": "Manger cru", "garde": 2880},
+	"poisson": {"nom": "Poisson cru", "pile": 10, "faim": 10, "malade": 0.3, "utiliser": "Manger cru", "garde": 1440},
+	"brochette": {"nom": "Brochette grillée", "pile": 10, "faim": 18, "chaud": 6, "utiliser": "Manger", "garde": 5760},
+	"viande_cuite": {"nom": "Viande cuite", "pile": 10, "faim": 35, "chaud": 10, "utiliser": "Manger", "garde": 5760},
+	"poisson_grille": {"nom": "Poisson grillé", "pile": 10, "faim": 22, "chaud": 6, "utiliser": "Manger", "garde": 4320},
+	"viande_sechee": {"nom": "Viande séchée", "pile": 20, "faim": 25, "soif": -5, "utiliser": "Manger"},
+	"viande_avariee": {"nom": "Nourriture avariée", "pile": 10, "faim": 5, "malade": 0.9, "utiliser": "Manger cru"},
+	"peau_lapin": {"nom": "Peau de lapin", "pile": 10},
+	"peau_renard": {"nom": "Peau de renard", "pile": 5},
+	"peau_chevreuil": {"nom": "Peau de chevreuil", "pile": 3},
+	"peau_sanglier": {"nom": "Peau de sanglier", "pile": 3},
+	"peau_loup": {"nom": "Peau de loup", "pile": 3},
+	"peau_chien": {"nom": "Peau de chien", "pile": 5},
+	"os": {"nom": "Os", "pile": 20},
+	"tendon": {"nom": "Tendons", "pile": 20},
+	"graisse": {"nom": "Graisse", "pile": 10},
+	"defense": {"nom": "Défense de sanglier", "pile": 10},
+	"arc": {"nom": "Arc", "pile": 1, "usure": 80},
+	"fleche": {"nom": "Flèche", "pile": 20},
+	"ligne": {"nom": "Ligne de pêche", "pile": 1, "usure": 30},
 }
+
+## Cuisson au feu : objet cru -> [objet cuit, bouton, minutes de jeu].
+const COOK := {
+	"bouteille_eau": ["bouteille_bouillie", "Faire bouillir", 10],
+	"champignon": ["repas", "Cuire", 10],
+	"conserve": ["repas", "Réchauffer", 5],
+	"petite_viande": ["brochette", "Griller", 15],
+	"viande": ["viande_cuite", "Cuire", 30],
+	"poisson": ["poisson_grille", "Griller", 15],
+}
+## Fumer la viande au feu : se garde sans limite.
+const SMOKE := {"viande": "viande_sechee", "petite_viande": "viande_sechee"}
 
 const _COLORS := {
 	"branche": Color8(120, 86, 52), "buche": Color8(140, 96, 56), "fibre": Color8(150, 160, 90),

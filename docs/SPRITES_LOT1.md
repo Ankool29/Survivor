@@ -73,4 +73,14 @@ Coût du lot 2 : environ 35 générations. Total depuis le début : environ 350 
 | Toit d'ardoise, toit de tôle | intégrés | jeux de tuiles en mode pro ; seule la tuile pleine est utilisée (bords droits) |
 | Végétation de façade : 3 lierres, orties, fougère, mousse | intégrés | une planche de 16 objets |
 
-Total depuis le début : 368 générations sur 2 000 (limite fixée : 1 600).
+
+# Lot de sprites 4 — Faune
+
+| Élément | Statut | Notes |
+| --- | --- | --- |
+| 6 animaux 4 directions (lapin, chevreuil, sanglier, renard, chien, loup) | intégrés | gabarits quadrupèdes ; l'ouest est l'est retourné |
+| Marche, course ; attaque (sanglier, chien, loup) | intégrées | animations personnalisées, 1 génération par direction |
+| 23 icônes (viandes, poissons, peaux, os, arc, flèche, collet, nasse…) | intégrées | une planche de 64 |
+| Collet, collet avec un lapin, nasse, empreintes | intégrés | une planche de 16 (empreintes pas encore utilisées) |
+
+Total depuis le début : environ 440 générations sur 2 000 (limite fixée : 1 600).

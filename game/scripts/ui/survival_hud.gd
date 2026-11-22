@@ -5,11 +5,15 @@ extends Control
 signal action_pressed
 signal bag_pressed
 signal sleep_pressed
+signal shoot_down
+signal shoot_up
 
 var surv: Survival
 var action_button: Button
 var bag_button: Button
 var sleep_button: Button
+var shoot_button: Button
+var crouching := false
 var clock: Label
 var _msg: Label
 var _msg_time := 0.0
@@ -44,6 +48,10 @@ func _ready() -> void:
 	bag_button.pressed.connect(func(): bag_pressed.emit())
 	sleep_button = _make_button("Dormir", 16)
 	sleep_button.pressed.connect(func(): sleep_pressed.emit())
+	shoot_button = _make_button("Tirer", 20)
+	shoot_button.button_down.connect(func(): shoot_down.emit())
+	shoot_button.button_up.connect(func(): shoot_up.emit())
+	shoot_button.visible = false
 	resized.connect(_layout)
 	_layout()
 
@@ -59,8 +67,8 @@ func _make_button(text: String, size_px: int) -> Button:
 
 func _layout() -> void:
 	var s := size
-	clock.position = Vector2(s.x - RIGHT_MARGIN - 300, 8)
-	clock.size = Vector2(300, 24)
+	clock.position = Vector2(s.x - RIGHT_MARGIN - 460, 8)
+	clock.size = Vector2(460, 24)
 	_msg.position = Vector2(s.x * 0.2, s.y * 0.30)
 	_msg.size = Vector2(s.x * 0.6, 60)
 	action_button.position = Vector2(s.x - RIGHT_MARGIN - 220, s.y - 96)
@@ -69,6 +77,8 @@ func _layout() -> void:
 	bag_button.size = Vector2(104, 52)
 	sleep_button.position = Vector2(s.x - RIGHT_MARGIN - 104, s.y - 160)
 	sleep_button.size = Vector2(104, 52)
+	shoot_button.position = Vector2(s.x - RIGHT_MARGIN - 330, s.y - 96)
+	shoot_button.size = Vector2(100, 72)
 
 
 func show_message(text: String) -> void:
@@ -89,8 +99,8 @@ func _process(delta: float) -> void:
 		_msg.modulate.a = clampf(_msg_time, 0.0, 1.0)
 	if surv:
 		var h := surv.hour()
-		clock.text = "Jour %d · %02d:%02d · %s · %s · %d °C" % [surv.days_survived() + 1, int(h), int(fmod(h, 1.0) * 60.0),
-			Survival.SEASONS[surv.season()], surv.weather, roundi(surv.outside_temp())]
+		clock.text = "Jour %d · %02d:%02d · %s · %s · %d °C · %s" % [surv.days_survived() + 1, int(h), int(fmod(h, 1.0) * 60.0),
+			Survival.SEASONS[surv.season()], surv.weather, roundi(surv.outside_temp()), surv.wind_name()]
 		sleep_button.visible = surv.fatigue < 60.0 and not surv.sleeping
 	queue_redraw()
 
@@ -121,6 +131,10 @@ func _draw() -> void:
 		extra.append(Items.name_of(surv.porte).to_lower())
 	if surv.torche > 0.0:
 		extra.append("torche")
+	if surv.saigne > 0.0:
+		extra.append("saigne")
+	if crouching:
+		extra.append("accroupi")
 	if not extra.is_empty():
 		var t := " · ".join(extra)
 		draw_string_outline(_font, Vector2(x, y + 12), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.8))

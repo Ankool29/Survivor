@@ -5,6 +5,7 @@ extends RefCounted
 signal changed
 
 var slots: Array = []
+var clock := Callable()          ## minutes de jeu (pour les denrées qui se gâtent)
 
 
 func _init(size := 16) -> void:
@@ -44,6 +45,9 @@ func add(id: String, n := 1) -> int:
 		if slots[i].is_empty():
 			var k := mini(pile, n)
 			slots[i] = {"id": id, "n": k}
+			var garde := float(Items.info(id).get("garde", 0))
+			if garde > 0.0 and clock.is_valid():
+				slots[i]["exp"] = float(clock.call()) + garde
 			var usure := int(Items.info(id).get("usure", 0))
 			if usure > 0:
 				slots[i]["usure"] = usure
@@ -82,6 +86,21 @@ func wear(id: String) -> bool:
 			changed.emit()
 			return true
 	return false
+
+
+## Les denrées périmées deviennent de la nourriture avariée ; renvoie le nombre gâté.
+func spoil(now: float) -> int:
+	var n := 0
+	for i in slots.size():
+		var s: Dictionary = slots[i]
+		if s.has("exp") and float(s["exp"]) < now:
+			var k := int(s["n"])
+			slots[i] = {}
+			n += k
+			add("viande_avariee", k)
+	if n > 0:
+		changed.emit()
+	return n
 
 
 func free_slots() -> int:

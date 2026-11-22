@@ -32,6 +32,8 @@ var malade := 0.0                ## minutes de maladie restantes
 var porte := ""                  ## vêtement porté
 var sac := false                 ## sac à dos équipé
 var torche := 0.0                ## minutes de torche restantes
+var saigne := 0.0                ## minutes de saignement restantes (un bandage l'arrête)
+var _wind := Vector2.RIGHT
 var sleeping := false
 var sleep_quality := 0.6
 var dead := false
@@ -40,6 +42,7 @@ var cause := ""
 # Statistiques de la partie
 var distance_m := 0.0
 var fouilles := 0
+var chasse := 0                  ## bêtes tuées
 
 # Contexte fourni chaque image par le jeu
 var running := false
@@ -54,6 +57,10 @@ func start(s: int) -> void:
 	seed_value = s
 	minutes = START_HOUR * 60.0
 	_pick_weather(true)
+
+
+func get_minutes() -> float:
+	return minutes
 
 
 func day() -> int:
@@ -111,6 +118,8 @@ func _pick_weather(force := false) -> void:
 	_weather_slot = slot
 	var r := RandomNumberGenerator.new()
 	r.seed = hash([seed_value, slot])
+	# vent dominant d'ouest en Bretagne, tournant d'une demi-journée à l'autre
+	_wind = Vector2.RIGHT.rotated(r.randfn(0.0, 0.9))
 	var odds: Array = WEATHER_ODDS[season()]
 	var x := r.randf()
 	for i in odds.size():
@@ -160,6 +169,11 @@ func tick(dt: float, speed := 1.0) -> void:
 		torche = maxf(0.0, torche - m)
 		if torche == 0.0:
 			message.emit("La torche s'est éteinte.")
+	if saigne > 0.0:
+		saigne = maxf(0.0, saigne - m)
+		sante -= 6.0 * h
+		if saigne == 0.0:
+			message.emit("Le saignement s'arrête.")
 	# Santé
 	var hurt := 0.0
 	var why := ""
@@ -182,6 +196,8 @@ func tick(dt: float, speed := 1.0) -> void:
 	sante = minf(100.0, sante)
 	if malade > 0.0 and why == "":
 		why = "la maladie"
+	if saigne > 0.0 and why == "":
+		why = "tes blessures"
 	_warn("soif", soif < 25, "Tu as soif.")
 	_warn("faim", faim < 25, "Tu as faim.")
 	_warn("fatigue", fatigue < 25, "Tu es épuisé.")
@@ -199,6 +215,19 @@ func _warn(key: String, cond: bool, text: String) -> void:
 	_warned[key] = cond
 
 
+## Direction vers laquelle souffle le vent.
+func wind() -> Vector2:
+	return _wind
+
+
+## « vent d'ouest » : d'où vient le vent.
+func wind_name() -> String:
+	var from := -_wind
+	var names := ["d'est", "du sud-est", "du sud", "du sud-ouest", "d'ouest", "du nord-ouest", "du nord", "du nord-est"]
+	var i := int(round(from.angle() / (TAU / 8.0))) % 8
+	return "vent " + names[(i + 8) % 8]
+
+
 func hurt(amount: float, why: String) -> void:
 	sante -= amount
 	if sante <= 0.0 and not dead:
@@ -214,6 +243,9 @@ func consume(id: String) -> String:
 	faim = minf(100.0, faim + float(it.get("faim", 0)))
 	soif = minf(100.0, soif + float(it.get("soif", 0)))
 	sante = minf(100.0, sante + float(it.get("soin", 0)))
+	if id == "bandage" and saigne > 0.0:
+		saigne = 0.0
+		return "Tu bandes la plaie : le saignement s'arrête."
 	if it.has("chaud"):
 		chaleur = minf(100.0, chaleur + float(it["chaud"]))
 	if it.get("guerit", false) and malade > 0.0:
@@ -230,7 +262,7 @@ func to_data() -> Dictionary:
 	return {"minutes": minutes, "weather": weather, "slot": _weather_slot, "seed": seed_value,
 		"soif": soif, "faim": faim, "fatigue": fatigue, "chaleur": chaleur, "sante": sante,
 		"mouille": mouille, "malade": malade, "porte": porte, "sac": sac, "torche": torche,
-		"distance": distance_m, "fouilles": fouilles}
+		"distance": distance_m, "fouilles": fouilles, "saigne": saigne, "chasse": chasse}
 
 
 func from_data(d: Dictionary) -> void:
@@ -250,3 +282,7 @@ func from_data(d: Dictionary) -> void:
 	torche = float(d.get("torche", 0))
 	distance_m = float(d.get("distance", 0))
 	fouilles = int(d.get("fouilles", 0))
+	saigne = float(d.get("saigne", 0))
+	chasse = int(d.get("chasse", 0))
+	_weather_slot = -1
+	_pick_weather()

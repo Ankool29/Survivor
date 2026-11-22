@@ -1,0 +1,85 @@
+{
+ "frame_w": 40,
+ "frame_h": 40,
+ "feet_y": 28,
+ "directions": [
+  "south",
+  "west",
+  "east",
+  "north"
+ ],
+ "anims": [
+  {
+   "name": "repos",
+   "dir": "south",
+   "row": 0,
+   "frames": 1
+  },
+  {
+   "name": "repos",
+   "dir": "west",
+   "row": 1,
+   "frames": 1
+  },
+  {
+   "name": "repos",
+   "dir": "east",
+   "row": 2,
+   "frames": 1
+  },
+  {
+   "name": "repos",
+   "dir": "north",
+   "row": 3,
+   "frames": 1
+  },
+  {
+   "name": "marche",
+   "dir": "south",
+   "row": 4,
+   "frames": 7
+  },
+  {
+   "name": "marche",
+   "dir": "west",
+   "row": 5,
+   "frames": 7
+  },
+  {
+   "name": "marche",
+   "dir": "east",
+   "row": 6,
+   "frames": 7
+  },
+  {
+   "name": "marche",
+   "dir": "north",
+   "row": 7,
+   "frames": 7
+  },
+  {
+   "name": "course",
+   "dir": "south",
+   "row": 8,
+   "frames": 7
+  },
+  {
+   "name": "course",
+   "dir": "west",
+   "row": 9,
+   "frames": 7
+  },
+  {
+   "name": "course",
+   "dir": "east",
+   "row": 10,
+   "frames": 7
+  },
+  {
+   "name": "course",
+   "dir": "north",
+   "row": 11,
+   "frames": 7
+  }
+ ]
+}

@@ -13,6 +13,13 @@ const LIST := [
 	{"id": "feu", "nom": "Feu de camp", "ing": {"branche": 6, "pierre": 4}, "pose": "feu"},
 	{"id": "abri", "nom": "Abri de branches", "ing": {"branche": 12, "fibre": 6, "corde": 2}, "pose": "abri"},
 	{"id": "coffre", "nom": "Coffre de camp", "ing": {"planche": 4, "corde": 1}, "pose": "coffre"},
+	{"id": "corde", "nom": "Corde de tendons", "ing": {"tendon": 2}},
+	{"id": "arc", "nom": "Arc", "ing": {"branche": 2, "corde": 2}, "outils": ["couteau"]},
+	{"id": "fleche", "n": 4, "nom": "4 flèches", "ing": {"branche": 2, "silex": 1}, "outils": ["couteau"]},
+	{"id": "ligne", "nom": "Ligne de pêche", "ing": {"corde": 1, "clous": 1}},
+	{"id": "ligne", "nom": "Ligne de pêche (hameçon en os)", "ing": {"corde": 1, "os": 1}, "outils": ["couteau"]},
+	{"id": "collet", "nom": "Collet", "ing": {"corde": 1, "branche": 1}, "pose": "collet"},
+	{"id": "nasse", "nom": "Nasse", "ing": {"branche": 4, "corde": 2}, "pose": "nasse"},
 ]
 
 

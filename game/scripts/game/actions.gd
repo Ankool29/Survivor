@@ -83,6 +83,10 @@ func label_for(t: Dictionary, pos: Vector2) -> String:
 			Tiles.D_FEU_ALLUME: return "Entretenir le feu"
 			Tiles.D_ABRI: return "Dormir"
 			Tiles.D_COFFRE: return "Ouvrir le coffre"
+			Tiles.D_COLLET_PRIS: return "Relever le collet"
+			Tiles.D_COLLET: return ""
+			Tiles.D_NASSE:
+				return "Relever la nasse" if int(mods.structure_at(cell).get("poissons", 0)) > 0 else ""
 		if not mods.can_harvest(cell, surv.minutes):
 			return ""
 		if d in TREES:
@@ -97,7 +101,9 @@ func label_for(t: Dictionary, pos: Vector2) -> String:
 			Tiles.D_GRAVATS: return "Fouiller les débris"
 			Tiles.D_SOUCHE: return "Ramasser du bois"
 	if near_water(pos):
-		return "Remplir la bouteille" if inv.has("bouteille_vide") else "Boire"
+		if inv.has("bouteille_vide"):
+			return "Remplir la bouteille"
+		return "Pêcher" if inv.has("ligne") and surv.soif > 80.0 else "Boire"
 	var g := world.ground_at(Vector2i(floori(pos.x / Tiles.SIZE), floori(pos.y / Tiles.SIZE)))
 	if g == Tiles.G_SOL_FEUILLUS and surv.season() == 2:
 		var fc := Vector2i(floori(pos.x / Tiles.SIZE) >> 2, floori(pos.y / Tiles.SIZE) >> 2) + Vector2i(100000, 0)
@@ -258,6 +264,21 @@ func burn(minutes_passed: float) -> Array:
 func place(type: String, pos: Vector2, facing: Vector2) -> bool:
 	var front := pos + facing.normalized() * 30.0
 	var cell := Vector2i(floori(front.x / Tiles.SIZE), floori(front.y / Tiles.SIZE))
+	if type == "nasse":
+		# dans l'eau, sur une case voisine du joueur
+		var c0 := Vector2i(floori(pos.x / Tiles.SIZE), floori(pos.y / Tiles.SIZE))
+		var best := Vector2i(-1, -1)
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				var c := c0 + Vector2i(dx, dy)
+				if zone.is_water(c.x, c.y) and mods.structure_at(c).is_empty() and world.decor_at(c) < 0:
+					if best.x < 0 or Vector2(c - c0).dot(facing) > Vector2(best - c0).dot(facing):
+						best = c
+		if best.x < 0:
+			return false
+		mods.structures[WorldMods.key(best)] = {"type": "nasse", "poissons": 0}
+		world.set_decor(best, Tiles.D_NASSE)
+		return true
 	if world.decor_at(cell) >= 0 or world.flags_at(cell) & (WorldGen.F_BLOCK | WorldGen.F_INDOOR):
 		return false
 	if zone.is_water(cell.x, cell.y) or zone.r_at(cell.x, cell.y) != 0:

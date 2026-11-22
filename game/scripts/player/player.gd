@@ -20,6 +20,8 @@ var _sprite: AnimatedSprite2D     ## sprite PixelLab, si présent
 var _running_now := false
 var _action := ""                 ## animation ponctuelle en cours (ramasser, frapper, boire)
 var sleeping := false
+var crouch := false               ## accroupi : lent et discret
+var aiming := false               ## arc bandé : très lent
 var _rest_offset := Vector2.ZERO
 
 const SHEET := "res://assets/characters/joueur.png"
@@ -94,6 +96,14 @@ func set_sleeping(on: bool) -> void:
 		_update_sprite()
 
 
+func set_crouch(on: bool) -> void:
+	crouch = on
+	if _sprite == null or sleeping:
+		return
+	_sprite.scale = Vector2(1.0, 0.86) if on else Vector2.ONE
+	_sprite.position = _rest_offset * Vector2(1.0, 0.86 if on else 1.0)
+
+
 func _direction_name() -> String:
 	if absf(facing.x) > absf(facing.y):
 		return "east" if facing.x > 0 else "west"
@@ -124,13 +134,17 @@ func _process(delta: float) -> void:
 	if keys.length() > 0.1:
 		dir = keys
 	var running := run or Input.is_action_pressed("run")
-	_running_now = running
+	_running_now = running and not crouch
 	moving = dir.length() > 0.1
 	if moving:
 		if dir.length() > 1.0:
 			dir = dir.normalized()
 		facing = dir.normalized()
-		var speed := walk_speed * (RUN_FACTOR if running else 1.0)
+		var speed := walk_speed * (RUN_FACTOR if _running_now else 1.0)
+		if crouch:
+			speed *= 0.45
+		if aiming:
+			speed *= 0.3
 		if world.flags_at(cell()) & WorldGen.F_SLOW:
 			speed *= SLOW_FACTOR
 		var step := dir * speed * delta

@@ -144,6 +144,10 @@ func ensure_cell(cell: Vector2i) -> WorldGen.ChunkData:
 	return _chunks[key]
 
 
+func is_loaded(cell: Vector2i) -> bool:
+	return _chunks.has(chunk_of_cell(cell))
+
+
 func flags_at(cell: Vector2i) -> int:
 	if not zone.inside(cell.x, cell.y):
 		return WorldGen.F_BLOCK
@@ -483,12 +487,15 @@ func set_decor(cell: Vector2i, d: int, flag := WorldGen.F_TRUNK) -> void:
 	_draw_decor(cell, d)
 
 
-const STRUCT_DECOR := {"feu": Tiles.D_FEU_ETEINT, "abri": Tiles.D_ABRI, "coffre": Tiles.D_COFFRE}
+const STRUCT_DECOR := {"feu": Tiles.D_FEU_ETEINT, "abri": Tiles.D_ABRI, "coffre": Tiles.D_COFFRE,
+	"collet": Tiles.D_COLLET, "nasse": Tiles.D_NASSE}
 
 
 func structure_decor(st: Dictionary) -> int:
 	if st.get("type", "") == "feu":
 		return Tiles.D_FEU_ALLUME if float(st.get("feu", 0)) > 0.0 else Tiles.D_FEU_ETEINT
+	if st.get("type", "") == "collet" and st.get("pris", "") != "":
+		return Tiles.D_COLLET_PRIS
 	return STRUCT_DECOR.get(st.get("type", ""), -1)
 
 

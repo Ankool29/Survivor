@@ -2,7 +2,26 @@
 
 Objectif : peupler le monde. Trente ans sans humains ont laissé la nature reprendre : le gibier abonde, les prédateurs sont revenus, et les chiens retournés à l'état sauvage chassent en meute. Le joueur chasse pour manger et se vêtir, et apprend à éviter ce qui peut le tuer.
 
-Statut : **proposition, à valider**. Les chiffres sont des valeurs de départ, à régler en jouant.
+Statut : **validé, en cours**. Les chiffres sont des valeurs de départ, à régler en jouant.
+
+Choix retenus : chiens sauvages et loups dès le départ, arc dès cette étape, bouton « S'accroupir ».
+
+Intégré (novembre 2026) :
+- 6 animaux animés (lapin, chevreuil, sanglier, renard, chien sauvage, loup), qui apparaissent hors de l'écran selon le terrain et l'heure, et disparaissent quand on s'éloigne ; ce qu'on tue manque quelques jours ;
+- sens : vue (moins dans le dos et la nuit), bruit (course, accroupi), odeur selon le vent, affiché en haut à droite ; couvert des hautes herbes et des bois ;
+- **arc** : maintenir « Tirer » pour viser (la visée s'accroche à l'animal le plus proche dans l'axe, en anticipant sa course), relâcher pour tirer ; une bête touchée saigne et laisse une piste de sang ; les flèches ratées restent souvent au sol, celles plantées se récupèrent en dépeçant ;
+- corps à corps avec la meilleure arme du sac (lance, hache, couteau, poings) ; chiens et loups tournent autour du joueur et attaquent surtout la nuit, s'il fuit, s'il est blessé ; deux bêtes mordent à la fois ; un feu les tient à distance, une torche aussi la nuit ;
+- morsures : perte de santé, parfois **saignement** (arrêté par un bandage) ;
+- dépecer au couteau ; carcasses qui attirent chiens, renards et loups, et pourrissent en 2 jours ;
+- collets (lapins, parfois un renard), nasses posées dans l'eau, ligne de pêche ;
+- cuisson au feu (griller, cuire) et viande **fumée** qui se garde ; viande et poisson crus se gâtent.
+
+Écarts avec la proposition :
+- la lance ne se lance pas (corps à corps seulement) ;
+- pas encore de corbeaux, d'empreintes, ni d'yeux qui brillent la nuit ;
+- pas de plumes : les flèches se font avec 2 branches et 1 silex (4 flèches) ; l'arc avec 2 branches et 2 cordes (les tendons donnent de la corde) ;
+- près de l'eau, le bouton propose « Pêcher » si on a une ligne et qu'on n'a pas soif, sinon « Boire » ;
+- commandes clavier : C pour s'accroupir, F maintenu pour viser.
 
 ## 1. Les animaux du prototype
 
@@ -67,9 +86,3 @@ La viande crue se gâte en 2 jours de jeu ; cuite, en 4 ; séchée, elle se gard
 - 7 animaux en personnages 4 directions (lapin, chevreuil, sanglier, renard, chien, loup, corbeau), avec marche, course, et pour certains attaque ou mort.
 - Carcasses, collet, nasse, arc, flèches, traces, nouvelles icônes d'objets.
 - Estimation : **environ 120 générations** ; on resterait vers 490 sur 2 000, loin de la limite de 1 600.
-
-## 8. Questions ouvertes
-
-1. Loups et chiens sauvages dès le départ, ou seulement le chien sauvage au début (le loup plus tard, plus rare) ?
-2. Arc dès cette étape, ou seulement la lance, les pièges et la pêche (l'arc à l'étape suivante) ?
-3. Le joueur s'accroupit avec un bouton, ou en marchant lentement (petit déplacement du joystick) ?
