@@ -8,6 +8,13 @@
  "crs": "EPSG:2154",
  "origin_x": 185959.75052203028,
  "origin_y": 6797692.295990669,
+ "mode": "compresse",
+ "layers": [
+  "terrain",
+  "roads",
+  "density",
+  "elev"
+ ],
  "terrain_codes": {
   "mer": 0,
   "eau": 1,
@@ -41,20 +48,20 @@
  "counts": {
   "terrain": {
    "mer": 548967,
-   "eau": 70454,
-   "sable": 1707,
-   "prairie": 105911,
-   "champ": 1301810,
-   "foret_feuillus": 120625,
+   "eau": 71040,
+   "sable": 1705,
+   "prairie": 105892,
+   "champ": 1301681,
+   "foret_feuillus": 120504,
    "foret_resineux": 33681,
-   "foret_mixte": 185188,
-   "lande": 13850,
-   "marais": 10774,
-   "urbain": 146174,
-   "industriel": 11868,
+   "foret_mixte": 185057,
+   "lande": 13839,
+   "marais": 10651,
+   "urbain": 146127,
+   "industriel": 11866,
    "roche": 3733,
    "cimetiere": 709,
-   "parc": 4549
+   "parc": 4548
   },
   "roads": {
    "aucune": 2240176,

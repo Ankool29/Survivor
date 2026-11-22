@@ -1,0 +1,13 @@
+== Sun Nov 22 14:25:27 UTC 2026 : zone quimperle_reel
+Extrait OSM : https://download.geofabrik.de/europe/france/bretagne/bretagne-latest.osm.pbf
+Boite : -3.61302,47.82877,-3.48307,47.91620
+Relief IGN...
+  IGN : 49 tuiles
+Zone quimperle_reel : 2500 x 2500 cases de 2.00 m
+Lecture OSM : /tmp/src/zone.osm.pbf
+  surfaces 749, cours d'eau 481, voies 4571, batiments 15117, lieux 164, noms 103
+  relief : IGN RGE ALTI, 6250000 cases renseignees
+  rues de ville omises : 0
+  batiments reels : 15117, cases de mur 140440
+Termine : {"terrain": {"mer": 35, "eau": 119841, "sable": 0, "prairie": 211331, "champ": 3276725, "foret_feuillus": 15450, "foret_resineux": 0, "foret_mixte": 711271, "lande": 0, "marais": 59104, "urbain": 1693135, "industriel": 111196, "roche": 0, "cimetiere": 6075, "parc": 45837}, "roads": {"aucune": 5838849, "voie_rapide": 30632, "principale": 15201, "secondaire": 58137, "rue": 188294, "chemin": 105880, "rail": 13007}, "pois": 164, "places": 103}
+== termine Sun Nov 22 14:26:54 UTC 2026

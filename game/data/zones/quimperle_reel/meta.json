@@ -1,0 +1,79 @@
+{
+ "name": "quimperle_reel",
+ "title": "Quimperlé (échelle réelle)",
+ "width": 2500,
+ "height": 2500,
+ "cells_per_km": 500,
+ "cell_m": 2.0,
+ "crs": "EPSG:2154",
+ "origin_x": 208538.85508559493,
+ "origin_y": 6775241.468954684,
+ "mode": "reel",
+ "layers": [
+  "terrain",
+  "roads",
+  "density",
+  "elev",
+  "bld"
+ ],
+ "terrain_codes": {
+  "mer": 0,
+  "eau": 1,
+  "sable": 2,
+  "prairie": 3,
+  "champ": 4,
+  "foret_feuillus": 5,
+  "foret_resineux": 6,
+  "foret_mixte": 7,
+  "lande": 8,
+  "marais": 9,
+  "urbain": 10,
+  "industriel": 11,
+  "roche": 12,
+  "cimetiere": 13,
+  "parc": 14
+ },
+ "road_codes": {
+  "aucune": 0,
+  "voie_rapide": 1,
+  "principale": 2,
+  "secondaire": 3,
+  "rue": 4,
+  "chemin": 5,
+  "rail": 6
+ },
+ "sources": [
+  "OpenStreetMap contributors (ODbL)",
+  "IGN RGE ALTI (Licence Ouverte Etalab 2.0)"
+ ],
+ "counts": {
+  "terrain": {
+   "mer": 35,
+   "eau": 119841,
+   "sable": 0,
+   "prairie": 211331,
+   "champ": 3276725,
+   "foret_feuillus": 15450,
+   "foret_resineux": 0,
+   "foret_mixte": 711271,
+   "lande": 0,
+   "marais": 59104,
+   "urbain": 1693135,
+   "industriel": 111196,
+   "roche": 0,
+   "cimetiere": 6075,
+   "parc": 45837
+  },
+  "roads": {
+   "aucune": 5838849,
+   "voie_rapide": 30632,
+   "principale": 15201,
+   "secondaire": 58137,
+   "rue": 188294,
+   "chemin": 105880,
+   "rail": 13007
+  },
+  "pois": 164,
+  "places": 103
+ }
+}

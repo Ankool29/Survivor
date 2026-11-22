@@ -1,0 +1,723 @@
+[
+{
+"name": "Quimperlé",
+"kind": "town",
+"x": 1139.7,
+"y": 1419.9,
+"population": 12313
+},
+{
+"name": "Beg an Hent",
+"kind": "hamlet",
+"x": 1750.6,
+"y": 844.2,
+"population": 0
+},
+{
+"name": "Beg ar Roz",
+"kind": "hamlet",
+"x": 1825.1,
+"y": 445.9,
+"population": 0
+},
+{
+"name": "Bel Air",
+"kind": "hamlet",
+"x": 1258.7,
+"y": 1486.2,
+"population": 0
+},
+{
+"name": "Belle Vue",
+"kind": "hamlet",
+"x": 1864.7,
+"y": 682.8,
+"population": 0
+},
+{
+"name": "Bois Joli",
+"kind": "hamlet",
+"x": 2338.7,
+"y": 1070.7,
+"population": 0
+},
+{
+"name": "Botlan",
+"kind": "hamlet",
+"x": 1270.9,
+"y": 404.4,
+"population": 0
+},
+{
+"name": "Cinq Croix",
+"kind": "hamlet",
+"x": 1593.4,
+"y": 1321.4,
+"population": 0
+},
+{
+"name": "Coat-kaër",
+"kind": "hamlet",
+"x": 982.1,
+"y": 973.2,
+"population": 0
+},
+{
+"name": "Croaz Chuz",
+"kind": "hamlet",
+"x": 919.1,
+"y": 1963.9,
+"population": 0
+},
+{
+"name": "Croix de Loc-Yvi",
+"kind": "hamlet",
+"x": 1980.8,
+"y": 383.4,
+"population": 0
+},
+{
+"name": "Kerampoix",
+"kind": "hamlet",
+"x": 1339.4,
+"y": 1721.0,
+"population": 0
+},
+{
+"name": "Kerandon",
+"kind": "hamlet",
+"x": 583.8,
+"y": 1525.0,
+"population": 0
+},
+{
+"name": "Keranmoulin",
+"kind": "hamlet",
+"x": 892.9,
+"y": 781.6,
+"population": 0
+},
+{
+"name": "Keransquer",
+"kind": "hamlet",
+"x": 1948.9,
+"y": 1579.1,
+"population": 0
+},
+{
+"name": "Keravel",
+"kind": "hamlet",
+"x": 1764.5,
+"y": 762.1,
+"population": 0
+},
+{
+"name": "Kercadoret",
+"kind": "hamlet",
+"x": 230.6,
+"y": 2412.0,
+"population": 0
+},
+{
+"name": "Kerflec'h",
+"kind": "hamlet",
+"x": 307.6,
+"y": 754.1,
+"population": 0
+},
+{
+"name": "Kerfontaine",
+"kind": "hamlet",
+"x": 952.5,
+"y": 884.8,
+"population": 0
+},
+{
+"name": "Kergariou",
+"kind": "hamlet",
+"x": 418.0,
+"y": 366.1,
+"population": 0
+},
+{
+"name": "Kergariou Nevez",
+"kind": "hamlet",
+"x": 326.4,
+"y": 325.9,
+"population": 0
+},
+{
+"name": "Kerguen",
+"kind": "hamlet",
+"x": 74.5,
+"y": 2156.8,
+"population": 0
+},
+{
+"name": "Kerguesténen",
+"kind": "hamlet",
+"x": 1833.4,
+"y": 512.7,
+"population": 0
+},
+{
+"name": "Kerhor",
+"kind": "hamlet",
+"x": 127.6,
+"y": 1481.3,
+"population": 0
+},
+{
+"name": "Kerisole",
+"kind": "hamlet",
+"x": 1414.9,
+"y": 634.3,
+"population": 0
+},
+{
+"name": "Kerlescouarn Bihan",
+"kind": "hamlet",
+"x": 1519.2,
+"y": 62.7,
+"population": 0
+},
+{
+"name": "Kerlescouarn Bras",
+"kind": "hamlet",
+"x": 1554.7,
+"y": 167.1,
+"population": 0
+},
+{
+"name": "Kerlidec",
+"kind": "hamlet",
+"x": 1795.9,
+"y": 1382.7,
+"population": 0
+},
+{
+"name": "Kerluandre",
+"kind": "hamlet",
+"x": 1750.7,
+"y": 880.5,
+"population": 0
+},
+{
+"name": "Kerluandre",
+"kind": "hamlet",
+"x": 1655.5,
+"y": 1004.7,
+"population": 0
+},
+{
+"name": "Kermagoret",
+"kind": "hamlet",
+"x": 1191.9,
+"y": 70.5,
+"population": 0
+},
+{
+"name": "Kermaria",
+"kind": "hamlet",
+"x": 427.1,
+"y": 1242.2,
+"population": 0
+},
+{
+"name": "Kermec",
+"kind": "hamlet",
+"x": 1975.3,
+"y": 692.0,
+"population": 0
+},
+{
+"name": "Kermerrien",
+"kind": "hamlet",
+"x": 1469.8,
+"y": 1204.8,
+"population": 0
+},
+{
+"name": "Kerneuzec",
+"kind": "hamlet",
+"x": 1133.2,
+"y": 670.9,
+"population": 0
+},
+{
+"name": "Kernevenas",
+"kind": "hamlet",
+"x": 790.7,
+"y": 488.8,
+"population": 0
+},
+{
+"name": "Kerpinvic",
+"kind": "hamlet",
+"x": 2379.1,
+"y": 1850.4,
+"population": 0
+},
+{
+"name": "Kerprat",
+"kind": "hamlet",
+"x": 753.3,
+"y": 1709.1,
+"population": 0
+},
+{
+"name": "Kerrez",
+"kind": "hamlet",
+"x": 1113.0,
+"y": 2032.7,
+"population": 0
+},
+{
+"name": "La Boulaie",
+"kind": "hamlet",
+"x": 168.7,
+"y": 258.1,
+"population": 0
+},
+{
+"name": "La Garenne",
+"kind": "hamlet",
+"x": 2338.1,
+"y": 51.5,
+"population": 0
+},
+{
+"name": "La Maison Brulée",
+"kind": "hamlet",
+"x": 773.5,
+"y": 1798.8,
+"population": 0
+},
+{
+"name": "La Maison Rouge",
+"kind": "hamlet",
+"x": 1256.8,
+"y": 611.1,
+"population": 0
+},
+{
+"name": "La Pépinière",
+"kind": "hamlet",
+"x": 702.4,
+"y": 117.3,
+"population": 0
+},
+{
+"name": "La Vacherie",
+"kind": "hamlet",
+"x": 1332.0,
+"y": 181.0,
+"population": 0
+},
+{
+"name": "La Villeneuve",
+"kind": "hamlet",
+"x": 2079.1,
+"y": 226.8,
+"population": 0
+},
+{
+"name": "La Villeneuve Braouic",
+"kind": "hamlet",
+"x": 1653.8,
+"y": 1716.6,
+"population": 0
+},
+{
+"name": "Landvidarch",
+"kind": "hamlet",
+"x": 440.2,
+"y": 2130.5,
+"population": 0
+},
+{
+"name": "Le Combout",
+"kind": "hamlet",
+"x": 1373.6,
+"y": 910.8,
+"population": 0
+},
+{
+"name": "Le Gorréquer",
+"kind": "hamlet",
+"x": 1626.3,
+"y": 960.6,
+"population": 0
+},
+{
+"name": "Le Poteau Vert",
+"kind": "hamlet",
+"x": 2022.3,
+"y": 1708.0,
+"population": 0
+},
+{
+"name": "Le Quinquis",
+"kind": "hamlet",
+"x": 2185.6,
+"y": 2015.9,
+"population": 0
+},
+{
+"name": "Le Ristouar",
+"kind": "hamlet",
+"x": 51.1,
+"y": 2435.1,
+"population": 0
+},
+{
+"name": "Le Roalis",
+"kind": "hamlet",
+"x": 1642.8,
+"y": 1260.3,
+"population": 0
+},
+{
+"name": "Le Viaduc",
+"kind": "hamlet",
+"x": 1410.7,
+"y": 1805.5,
+"population": 0
+},
+{
+"name": "Lichern",
+"kind": "hamlet",
+"x": 1762.4,
+"y": 1265.0,
+"population": 0
+},
+{
+"name": "Loc-Yvi",
+"kind": "hamlet",
+"x": 2181.4,
+"y": 421.2,
+"population": 0
+},
+{
+"name": "Loge Daniel",
+"kind": "hamlet",
+"x": 2221.7,
+"y": 2093.0,
+"population": 0
+},
+{
+"name": "Lézardeau",
+"kind": "hamlet",
+"x": 1267.3,
+"y": 847.8,
+"population": 0
+},
+{
+"name": "Moulin de la Boulaie",
+"kind": "hamlet",
+"x": 69.9,
+"y": 788.9,
+"population": 0
+},
+{
+"name": "Pempic",
+"kind": "hamlet",
+"x": 2115.0,
+"y": 508.6,
+"population": 0
+},
+{
+"name": "Penlann",
+"kind": "hamlet",
+"x": 816.8,
+"y": 314.7,
+"population": 0
+},
+{
+"name": "Poul Raned",
+"kind": "hamlet",
+"x": 1130.6,
+"y": 2262.2,
+"population": 0
+},
+{
+"name": "Poul Raned",
+"kind": "hamlet",
+"x": 1102.5,
+"y": 2195.1,
+"population": 0
+},
+{
+"name": "Poulfanc",
+"kind": "hamlet",
+"x": 543.4,
+"y": 2415.4,
+"population": 0
+},
+{
+"name": "Poulfanc-Ouest",
+"kind": "hamlet",
+"x": 418.9,
+"y": 2475.0,
+"population": 0
+},
+{
+"name": "Roscado",
+"kind": "hamlet",
+"x": 1824.4,
+"y": 1180.7,
+"population": 0
+},
+{
+"name": "Roscasquen",
+"kind": "hamlet",
+"x": 2425.5,
+"y": 1696.4,
+"population": 0
+},
+{
+"name": "Roz Glaz",
+"kind": "hamlet",
+"x": 959.9,
+"y": 393.5,
+"population": 0
+},
+{
+"name": "Roz ar Chass",
+"kind": "hamlet",
+"x": 1602.6,
+"y": 1122.3,
+"population": 0
+},
+{
+"name": "Roz ar Vilinn",
+"kind": "hamlet",
+"x": 1993.2,
+"y": 2216.0,
+"population": 0
+},
+{
+"name": "Saint-Jalmes",
+"kind": "hamlet",
+"x": 1605.1,
+"y": 1534.7,
+"population": 0
+},
+{
+"name": "Saint-Jean",
+"kind": "hamlet",
+"x": 1845.0,
+"y": 1341.5,
+"population": 0
+},
+{
+"name": "Saint-Nicolas",
+"kind": "hamlet",
+"x": 1420.9,
+"y": 1590.3,
+"population": 0
+},
+{
+"name": "Stang Veil",
+"kind": "hamlet",
+"x": 874.3,
+"y": 21.8,
+"population": 0
+},
+{
+"name": "Stang an Aman",
+"kind": "hamlet",
+"x": 2105.6,
+"y": 1389.3,
+"population": 0
+},
+{
+"name": "Ti Houarn",
+"kind": "hamlet",
+"x": 1492.3,
+"y": 1163.5,
+"population": 0
+},
+{
+"name": "Trelivalaire",
+"kind": "hamlet",
+"x": 380.2,
+"y": 1766.5,
+"population": 0
+},
+{
+"name": "Trévoazec",
+"kind": "hamlet",
+"x": 1876.5,
+"y": 1835.5,
+"population": 0
+},
+{
+"name": "Zabrenn",
+"kind": "hamlet",
+"x": 865.4,
+"y": 372.1,
+"population": 0
+},
+{
+"name": "Zabrenn",
+"kind": "hamlet",
+"x": 970.7,
+"y": 534.7,
+"population": 0
+},
+{
+"name": "loge Daniel",
+"kind": "hamlet",
+"x": 2361.2,
+"y": 2015.9,
+"population": 0
+},
+{
+"name": "Kerisole",
+"kind": "locality",
+"x": 1442.1,
+"y": 579.2,
+"population": 0
+},
+{
+"name": "La Motte",
+"kind": "locality",
+"x": 1855.6,
+"y": 898.5,
+"population": 0
+},
+{
+"name": "La villeneuve Braouic Sud",
+"kind": "locality",
+"x": 1631.2,
+"y": 2085.6,
+"population": 0
+},
+{
+"name": "Le Guern",
+"kind": "locality",
+"x": 1655.2,
+"y": 2284.2,
+"population": 0
+},
+{
+"name": "Moulin de Hilliguet",
+"kind": "locality",
+"x": 1522.3,
+"y": 428.5,
+"population": 0
+},
+{
+"name": "Quinquis Creis",
+"kind": "locality",
+"x": 2125.2,
+"y": 2166.4,
+"population": 0
+},
+{
+"name": "Quinquis d'Andeas",
+"kind": "locality",
+"x": 2086.5,
+"y": 2034.4,
+"population": 0
+},
+{
+"name": "Roscado Nord",
+"kind": "locality",
+"x": 1866.8,
+"y": 977.6,
+"population": 0
+},
+{
+"name": "Bois du Duc",
+"kind": "isolated_dwelling",
+"x": 2142.3,
+"y": 2494.2,
+"population": 0
+},
+{
+"name": "Château de Queblen",
+"kind": "isolated_dwelling",
+"x": 1331.0,
+"y": 2207.6,
+"population": 0
+},
+{
+"name": "Château du Bois Joly",
+"kind": "isolated_dwelling",
+"x": 2260.0,
+"y": 1045.7,
+"population": 0
+},
+{
+"name": "Coat Mé",
+"kind": "isolated_dwelling",
+"x": 1468.1,
+"y": 2346.4,
+"population": 0
+},
+{
+"name": "Keranforêt",
+"kind": "isolated_dwelling",
+"x": 678.6,
+"y": 1992.9,
+"population": 0
+},
+{
+"name": "Kerflec'h",
+"kind": "isolated_dwelling",
+"x": 169.9,
+"y": 911.4,
+"population": 0
+},
+{
+"name": "Kergamp",
+"kind": "isolated_dwelling",
+"x": 891.6,
+"y": 2400.8,
+"population": 0
+},
+{
+"name": "Kergroëz",
+"kind": "isolated_dwelling",
+"x": 490.2,
+"y": 2191.0,
+"population": 0
+},
+{
+"name": "Kermabon",
+"kind": "isolated_dwelling",
+"x": 402.5,
+"y": 100.8,
+"population": 0
+},
+{
+"name": "La Grande Motte",
+"kind": "isolated_dwelling",
+"x": 1964.5,
+"y": 905.1,
+"population": 0
+},
+{
+"name": "La Motte",
+"kind": "isolated_dwelling",
+"x": 2039.8,
+"y": 854.2,
+"population": 0
+},
+{
+"name": "La Petite Motte",
+"kind": "isolated_dwelling",
+"x": 1785.9,
+"y": 1041.3,
+"population": 0
+},
+{
+"name": "Loj Bonal",
+"kind": "isolated_dwelling",
+"x": 1797.7,
+"y": 1646.3,
+"population": 0
+}
+]
