@@ -14,6 +14,12 @@ Choix retenus : départ en début d'automne, vitesses des besoins du cahier, dé
 - on fouille les **meubles** (armoire, frigo, rayon, établi…) placés contre les murs des vrais bâtiments, et les épaves de voitures ;
 - commandes clavier pour tester sur ordinateur : E ou Espace pour l'action, I ou Tab pour le sac.
 
+Retours après premier essai (novembre 2026), intégrés :
+- **sac** : toucher un objet le sélectionne, puis Utiliser, Jeter, Jeter tout (et Ranger avec un coffre ou un meuble ouvert) ;
+- **fouille** : le meuble s'ouvre comme un coffre ; on prend objet par objet, ou tout d'un coup ; ce qu'on laisse y reste, et on peut y ranger des objets ;
+- **carte** : zoom par pincement ou boutons (jusqu'à ×24), déplacement au doigt, bouton « Moi » ; villages puis hameaux et lieux notables apparaissent en zoomant ; échelle affichée ;
+- **bâtiments** : redressés s'ils sont presque alignés sur la grille, murs continus, une porte par bâtiment (côté voie de préférence), sol jusqu'aux murs, meubles jamais sous un mur.
+
 Hors étape 2 (étapes suivantes) : animaux et chasse, tribus, véhicules, voyage rapide, maladies détaillées, agriculture.
 
 ## 1. Le temps

@@ -17,6 +17,7 @@ var entities: Node2D        ## parent trié en Y : décor + joueur
 var decor: TileMapLayer
 var wang_layers: Array[TileMapLayer] = []   ## une couche par transition, décalée d'une demi-case
 var _wang_of_kind := PackedInt32Array()     ## Tiles.G_* -> index de couche, -1 = aucune, -2 = herbe
+var _ground_of_kind := PackedInt32Array()   ## idem pour les sols : un mur a du carrelage dessous
 var _has_base := false
 var _walls_wang := false
 var _cliff := {}          ## index de couche -> table de correspondance (jeux en relief)
@@ -70,6 +71,10 @@ func setup(z: ZoneData, seed_value: int) -> void:
 				if ts.has_source(Tiles.SRC_WANG + i):
 					_wang_of_kind[k] = i
 	_walls_wang = _has_base and _wang_of_kind[Tiles.G_MUR] >= 0
+	_ground_of_kind = _wang_of_kind.duplicate()
+	var floor_i := Tiles.WANG_NAMES.find("sol_ruine")
+	if _walls_wang and _has_base and _wang_of_kind[Tiles.G_SOL_BATIMENT] == floor_i:
+		_ground_of_kind[Tiles.G_MUR] = floor_i
 	for i in Tiles.WANG_NAMES.size():
 		var lk := Tiles.cliff_lookup(Tiles.WANG_NAMES[i])
 		if not lk.is_empty():
@@ -256,10 +261,10 @@ func _compute_dual(c: WorldGen.ChunkData, x0: int, y0: int) -> Array:
 	for dy in CHUNK:
 		for dx in CHUNK:
 			var r := dy * K + dx
-			corners[0] = _wang_of_kind[c.kinds[r]]
-			corners[1] = _wang_of_kind[c.kinds[r + 1]]
-			corners[2] = _wang_of_kind[c.kinds[r + K]]
-			corners[3] = _wang_of_kind[c.kinds[r + K + 1]]
+			corners[0] = _ground_of_kind[c.kinds[r]]
+			corners[1] = _ground_of_kind[c.kinds[r + 1]]
+			corners[2] = _ground_of_kind[c.kinds[r + K]]
+			corners[3] = _ground_of_kind[c.kinds[r + K + 1]]
 			for j in 4:
 				var layer := corners[j]
 				if layer < 0:

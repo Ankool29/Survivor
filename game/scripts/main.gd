@@ -30,8 +30,8 @@ var mods: WorldMods
 var actions: Actions
 var seed_value := 0
 var _target := {}
-var _chest_cell := Vector2i(-1, -1)
-var _chest_inv: Inventory
+var _cont_inv: Inventory          ## contenu ouvert (coffre, meuble, épave)
+var _cont_save := Callable()     ## écrit le contenu dans les changements du monde
 var _place_timer := 0.0
 var _action_timer := 0.0
 var _save_timer := AUTOSAVE_S
@@ -260,13 +260,16 @@ func _on_action() -> void:
 		player.play_action("frapper")
 	elif label == "Boire" or label.begins_with("Remplir"):
 		player.play_action("boire")
-	elif not r.has("chest") and not r.has("sleep") and label != "":
+	elif not r.has("chest") and not r.has("sleep") and label != "Ouvrir" and label != "":
 		player.play_action("ramasser")
 	if r.has("sleep"):
 		_sleep(1.0)
 		return
 	if r.has("chest"):
 		_open_chest(r["chest"])
+		return
+	if r.has("container"):
+		_open_furniture(r["container"], r["title"])
 		return
 	hud.show_message(r.get("msg", ""))
 	_action_timer = 0.0
@@ -301,17 +304,26 @@ func _wake(text: String) -> void:
 
 
 func _open_chest(cell: Vector2i) -> void:
-	_chest_cell = cell
-	var st: Dictionary = mods.structures[WorldMods.key(cell)]
-	_chest_inv = Inventory.new(12)
-	_chest_inv.from_data(st.get("objets", []))
-	_chest_inv.resize(12)
-	bag.open(_chest_inv)
+	var k := WorldMods.key(cell)
+	_open_container(mods.structures[k].get("objets", []), "Coffre",
+		func(data): mods.structures[k]["objets"] = data)
 
 
-func _store_chest() -> void:
-	if _chest_inv != null and _chest_cell.x >= 0:
-		mods.structures[WorldMods.key(_chest_cell)]["objets"] = _chest_inv.to_data()
+func _open_furniture(cell: Vector2i, title: String) -> void:
+	_open_container(mods.content_of(cell), title, func(data): mods.mark_searched(cell, data))
+
+
+func _open_container(data: Array, title: String, save: Callable) -> void:
+	_cont_inv = Inventory.new(12)
+	_cont_inv.from_data(data)
+	_cont_inv.resize(12)
+	_cont_save = save
+	bag.open(_cont_inv, title)
+
+
+func _store_container() -> void:
+	if _cont_inv != null and _cont_save.is_valid():
+		_cont_save.call(_cont_inv.to_data())
 
 
 func _on_use_item(index: int) -> void:
@@ -319,14 +331,6 @@ func _on_use_item(index: int) -> void:
 	if s.is_empty():
 		return
 	var id: String = s["id"]
-	# Coffre ouvert : on y range la pile entière
-	if bag.chest != null:
-		var n := int(s["n"])
-		var left := bag.chest.add(id, n)
-		inv.remove(id, n - left)
-		_store_chest()
-		bag.refresh()
-		return
 	# Près d'un feu : cuisson
 	if actions.near_fire(player.position, 2).x >= 0 and id in ["bouteille_eau", "champignon", "conserve"]:
 		inv.remove(id)
@@ -361,14 +365,61 @@ func _on_use_item(index: int) -> void:
 	bag.refresh()
 
 
-func _on_take_from_chest(index: int) -> void:
-	var s: Dictionary = bag.chest.slots[index]
+func _on_drop_item(index: int, all: bool) -> void:
+	var s: Dictionary = inv.slots[index]
 	if s.is_empty():
 		return
-	var n := int(s["n"])
+	var n := int(s["n"]) if all else 1
+	if surv.porte == s["id"] and inv.count(s["id"]) <= n:
+		surv.porte = ""
+	inv.remove(s["id"], n)
+	hud.show_message("Tu jettes : %s%s." % [Items.name_of(s["id"]).to_lower(), " ×%d" % n if n > 1 else ""])
+	bag.refresh()
+
+
+func _on_store_item(index: int, all: bool) -> void:
+	var s: Dictionary = inv.slots[index]
+	if s.is_empty() or _cont_inv == null:
+		return
+	var n := int(s["n"]) if all else 1
+	var left := _cont_inv.add(s["id"], n)
+	inv.remove(s["id"], n - left)
+	if left > 0:
+		hud.show_message("Plus de place.")
+	_store_container()
+	bag.refresh()
+
+
+func _on_take_item(index: int, all: bool) -> void:
+	if _cont_inv == null:
+		return
+	var s: Dictionary = _cont_inv.slots[index]
+	if s.is_empty():
+		return
+	var n := int(s["n"]) if all else 1
 	var left := inv.add(s["id"], n)
-	bag.chest.remove(s["id"], n - left)
-	_store_chest()
+	_cont_inv.remove(s["id"], n - left)
+	if left > 0:
+		hud.show_message("Sac plein.")
+	_store_container()
+	bag.refresh()
+
+
+func _on_take_all() -> void:
+	if _cont_inv == null:
+		return
+	var full := false
+	for i in _cont_inv.slots.size():
+		var s: Dictionary = _cont_inv.slots[i]
+		if s.is_empty():
+			continue
+		var n := int(s["n"])
+		var left := inv.add(s["id"], n)
+		_cont_inv.remove(s["id"], n - left)
+		full = full or left > 0
+	if full:
+		hud.show_message("Sac plein.")
+	_store_container()
 	bag.refresh()
 
 
@@ -496,12 +547,15 @@ func _build_ui() -> void:
 	bag = BagPanel.new()
 	ui.add_child(bag)
 	bag.use_item.connect(_on_use_item)
+	bag.drop_item.connect(_on_drop_item)
+	bag.store_item.connect(_on_store_item)
+	bag.take_item.connect(_on_take_item)
+	bag.take_all.connect(_on_take_all)
 	bag.craft.connect(_on_craft)
-	bag.take_from_chest.connect(_on_take_from_chest)
 	bag.closed.connect(func():
-		_store_chest()
-		_chest_inv = null
-		_chest_cell = Vector2i(-1, -1))
+		_store_container()
+		_cont_inv = null
+		_cont_save = Callable())
 	map_view = MapView.new()
 	ui.add_child(map_view)
 	sleep_overlay = _overlay("Tu dors…", "Se réveiller", func(): _wake("Tu te lèves."))
@@ -547,8 +601,8 @@ func _toggle_bag() -> void:
 
 
 func _open_map() -> void:
-	map_view.visible = true
-	map_view.queue_redraw()
+	map_view.player_cell = player.position / Tiles.SIZE
+	map_view.open()
 
 
 func _button(text: String, action: Callable) -> Button:

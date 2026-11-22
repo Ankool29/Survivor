@@ -10,6 +10,11 @@ var inv: Inventory
 var mods: WorldMods
 var seed_value := 0
 
+const TITLES := {"armoire": "Armoire", "commode": "Commode", "etagere": "Étagère", "carton": "Cartons",
+	"frigo": "Frigo", "lit": "Lit", "caisse": "Caisse", "table": "Table", "rayon": "Rayon",
+	"armoire_pharma": "Armoire à pharmacie", "etabli": "Établi", "foin": "Botte de foin",
+	"voiture": "Voiture", "camionnette": "Camionnette"}
+
 const TREES := [Tiles.D_FEUILLU_A, Tiles.D_FEUILLU_B, Tiles.D_RESINEUX_A, Tiles.D_RESINEUX_B,
 	Tiles.D_JEUNE_ARBRE, Tiles.D_ARBRE_MORT, Tiles.D_SAULE]
 
@@ -72,7 +77,7 @@ func label_for(t: Dictionary, pos: Vector2) -> String:
 		var cell: Vector2i = t["cell"]
 		var name := Tiles.decor_name(d, cell)
 		if d in Loot.TABLE_OF_DECOR:
-			return "Déjà fouillé" if mods.is_searched(cell) else "Fouiller"
+			return "Ouvrir" if mods.is_searched(cell) else "Fouiller"
 		match d:
 			Tiles.D_FEU_ETEINT: return "Allumer le feu"
 			Tiles.D_FEU_ALLUME: return "Entretenir le feu"
@@ -136,14 +141,15 @@ func run(t: Dictionary, pos: Vector2) -> Dictionary:
 	var cell: Vector2i = t["cell"]
 	var d: int = t["decor"]
 	match label:
-		"Fouiller":
-			mods.mark_searched(cell)
-			surv.fouilles += 1
-			got = Loot.roll(Loot.TABLE_OF_DECOR[d], cell, seed_value)
-			if got.is_empty():
-				return {"msg": "Rien d'utile."}
-		"Déjà fouillé":
-			return {"msg": "Déjà fouillé."}
+		"Fouiller", "Ouvrir":
+			if label == "Fouiller":
+				surv.fouilles += 1
+				var content := Inventory.new(12)
+				var loot := Loot.roll(Loot.TABLE_OF_DECOR[d], cell, seed_value)
+				for id in loot:
+					content.add(id, int(loot[id]))
+				mods.mark_searched(cell, content.to_data())
+			return {"container": cell, "title": TITLES.get(Tiles.decor_name(d, cell), "Meuble")}
 		"Ramasser des branches":
 			got = {"branche": 2 + randi() % 2}
 			mods.harvest(cell, surv.minutes)

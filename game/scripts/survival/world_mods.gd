@@ -2,7 +2,7 @@ class_name WorldMods
 extends RefCounted
 ## Changements faits par le joueur dans le monde (sauvegardés) :
 ## - récoltes : case -> minute de jeu où la plante a repoussé ;
-## - fouilles : cases de meubles ou d'épaves déjà vidées ;
+## - fouilles : meubles et épaves déjà fouillés -> ce qu'il y reste (cases d'inventaire) ;
 ## - constructions : case -> {type, feu (minutes restantes), objets (coffre)}.
 
 const REGROW_MIN := 3 * 1440.0   ## une plante repousse en 3 jours
@@ -33,8 +33,13 @@ func is_searched(c: Vector2i) -> bool:
 	return searched.has(key(c))
 
 
-func mark_searched(c: Vector2i) -> void:
-	searched[key(c)] = true
+func mark_searched(c: Vector2i, content: Array) -> void:
+	searched[key(c)] = content
+
+
+func content_of(c: Vector2i) -> Array:
+	var v = searched.get(key(c), [])
+	return v if v is Array else []
 
 
 func structure_at(c: Vector2i) -> Dictionary:
