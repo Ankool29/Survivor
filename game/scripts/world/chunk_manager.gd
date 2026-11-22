@@ -21,6 +21,11 @@ var _ground_of_kind := PackedInt32Array()   ## idem pour les sols : un mur a du 
 var _has_base := false
 var _walls_wang := false
 var _cliff := {}          ## index de couche -> table de correspondance (jeux en relief)
+var roof_root: Node2D
+var roof_layers: Array[TileMapLayer] = []   ## ardoise, tôle (au-dessus du joueur)
+var _has_roofs := false
+var _hidden := {}          ## case double -> [couche, motif] des toits masqués
+const ROOF_LIFT := 22.0     ## le toit est dessiné plus haut que les murs (vue 3/4)
 
 var _chunks := {}           # Vector2i -> WorldGen.ChunkData
 var _shades := {}           # Vector2i -> Sprite2D
@@ -84,6 +89,20 @@ func setup(z: ZoneData, seed_value: int) -> void:
 	ground.name = "Sol"
 	ground.tile_set = ts
 	add_child(ground)
+	# Toits : au-dessus du décor et du joueur
+	roof_root = Node2D.new()
+	roof_root.name = "Toits"
+	roof_root.z_index = 20
+	roof_root.position = Vector2(0, -ROOF_LIFT)
+	add_child(roof_root)
+	for i in Tiles.ROOF_NAMES.size():
+		var rl := TileMapLayer.new()
+		rl.name = Tiles.ROOF_NAMES[i]
+		rl.tile_set = ts
+		roof_root.add_child(rl)
+		roof_layers.append(rl)
+		if ts.has_source(Tiles.SRC_ROOF + i):
+			_has_roofs = true
 	shade_root = Node2D.new()
 	shade_root.name = "Relief"
 	add_child(shade_root)
@@ -194,6 +213,8 @@ func _generate_in_thread(key: Vector2i, g: WorldGen) -> void:
 	var c := g.generate(key.x, key.y)
 	if _has_base:
 		c.dual = _compute_dual(c, key.x * CHUNK, key.y * CHUNK)
+	if _has_roofs:
+		c.roof = _compute_roof(key.x * CHUNK, key.y * CHUNK)
 	_task_ms = (Time.get_ticks_usec() - t0) / 1000.0
 	_task_result = c
 
@@ -219,6 +240,17 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 		if c.dual.is_empty():
 			c.dual = _compute_dual(c, x0, y0)
 		_apply_dual(c)
+	if _has_roofs:
+		if c.roof.is_empty():
+			c.roof = _compute_roof(x0, y0)
+		for t in c.roof.size():
+			var arr: PackedInt32Array = c.roof[t]
+			for k in range(0, arr.size(), 3):
+				var dc := Vector2i(arr[k], arr[k + 1])
+				if _hidden.has(dc):
+					_hidden[dc] = [t, arr[k + 2]]     # reste masqué, mais on retient le motif
+				else:
+					roof_layers[t].set_cell(dc, Tiles.SRC_ROOF + t, Vector2i(arr[k + 2], 0))
 	for ly in CHUNK:
 		for lx in CHUNK:
 			var i := ly * CHUNK + lx
@@ -326,6 +358,69 @@ func _compute_dual(c: WorldGen.ChunkData, x0: int, y0: int) -> Array:
 	return out
 
 
+## Toits (calculés en arrière-plan) : une tuile pleine par case couverte
+## (1 ardoise, 2 tôle), bords droits comme les bâtiments.
+func _compute_roof(x0: int, y0: int) -> Array:
+	var out: Array = []
+	for t in Tiles.ROOF_NAMES.size():
+		out.append(PackedInt32Array())
+	for ly in CHUNK:
+		for lx in CHUNK:
+			var r := zone.roof_at(x0 + lx, y0 + ly)
+			if r > 0:
+				out[r - 1].append_array([x0 + lx, y0 + ly, 15])
+	return out
+
+
+## Masque les toits au-dessus de ces cases (le bâtiment où l'on est entré).
+func hide_roof(cells: Array) -> void:
+	show_roof()
+	for cell in cells:
+		if true:
+			var dc: Vector2i = cell
+			if _hidden.has(dc):
+				continue
+			for t in roof_layers.size():
+				var tl := roof_layers[t]
+				if tl.get_cell_source_id(dc) != -1:
+					_hidden[dc] = [t, tl.get_cell_atlas_coords(dc).x]
+					tl.erase_cell(dc)
+
+
+func show_roof() -> void:
+	for dc in _hidden:
+		var v: Array = _hidden[dc]
+		if _chunks.has(chunk_of_cell(dc)):
+			roof_layers[v[0]].set_cell(dc, Tiles.SRC_ROOF + v[0], Vector2i(v[1], 0))
+	_hidden.clear()
+
+
+## Cases d'un bâtiment à partir d'une case intérieure : sols et portes reliés,
+## plus les murs qui les bordent (limité à 6000 cases).
+func building_cells(start: Vector2i) -> Array:
+	var seen := {start: true}
+	var stack := [start]
+	var out := []
+	while not stack.is_empty() and out.size() < 6000:
+		var c: Vector2i = stack.pop_back()
+		out.append(c)
+		var b := zone.bb_at(c.x, c.y)
+		if b == 2:
+			continue
+		for o in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+				Vector2i(1, 1), Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1)]:
+			var n: Vector2i = c + o
+			if seen.has(n):
+				continue
+			var nb := zone.bb_at(n.x, n.y)
+			if nb == 0:
+				continue
+			if nb == 2 or o.x == 0 or o.y == 0:
+				seen[n] = true
+				stack.append(n)
+	return out
+
+
 ## Pose les tuiles de transition déjà choisies (image principale).
 func _apply_dual(c: WorldGen.ChunkData) -> void:
 	for layer in c.dual.size():
@@ -415,6 +510,8 @@ func _unload(key: Vector2i) -> void:
 			decor.erase_cell(cell)
 			for layer in wang_layers:
 				layer.erase_cell(cell)
+			for rl in roof_layers:
+				rl.erase_cell(cell)
 	if _shades.has(key):
 		_shades[key].queue_free()
 		_shades.erase(key)

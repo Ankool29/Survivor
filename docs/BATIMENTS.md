@@ -2,7 +2,7 @@
 
 Objectif : des bâtiments quasiment intacts après 30 ans, où la végétation reprend légèrement le dessus ; on voit les toits de l'extérieur, et le toit du bâtiment où l'on entre disparaît pour montrer l'intérieur.
 
-Statut : **proposition, à valider**.
+Statut : **validé et intégré** (toits en tuiles pleines à bords droits, relevés de 22 px).
 
 ## 1. Toits
 

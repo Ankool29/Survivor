@@ -44,6 +44,7 @@ class ChunkData:
 	## bâtiments : sert aux transitions de la grille double. Index (ly+1)*33+(lx+1).
 	var kinds := PackedByteArray()
 	var dual: Array = []               ## tuiles de transition précalculées (ChunkManager)
+	var roof: Array = []               ## tuiles de toit précalculées, par type de toit
 	var buildings: Array = []          # {rect: Rect2i (cases monde), kind: String, name: String}
 
 

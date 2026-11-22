@@ -117,6 +117,9 @@ const SRC_WANG := 10        ## + index dans WANG_NAMES
 const WANG_NAMES := ["friche", "lande", "feuillus", "resineux", "marais", "chemin",
 	"sable", "beton", "asphalte", "ballast", "eau", "mer", "pont", "sol_ruine", "mur"]
 const BASE_PATH := "res://assets/tiles/base_herbe.png"
+## Toits (transitions sur fond transparent), par type : 1 ardoise, 2 tôle.
+const ROOF_NAMES := ["toit_ardoise", "toit_tole"]
+const SRC_ROOF := 60        ## + index dans ROOF_NAMES
 
 ## Transition utilisée par chaque type de sol ("" = l'herbe de base).
 ## Les sols absents de cette table sont dessinés en tuiles pleines par-dessus.
@@ -239,6 +242,16 @@ static func build_tileset() -> TileSet:
 		base.create_tile(Vector2i.ZERO)
 		var alt := base.create_alternative_tile(Vector2i.ZERO)
 		base.get_tile_data(Vector2i.ZERO, alt).flip_h = true
+	# Toits
+	for i in ROOF_NAMES.size():
+		var rpath := wang_path(ROOF_NAMES[i])
+		if ResourceLoader.exists(rpath):
+			var rs := TileSetAtlasSource.new()
+			rs.texture = load(rpath)
+			rs.texture_region_size = Vector2i(SIZE, SIZE)
+			ts.add_source(rs, SRC_ROOF + i)
+			for m in 16:
+				rs.create_tile(Vector2i(m, 0))
 	# Transitions
 	for i in WANG_NAMES.size():
 		var path := wang_path(WANG_NAMES[i])

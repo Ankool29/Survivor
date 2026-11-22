@@ -38,6 +38,7 @@ var _save_timer := AUTOSAVE_S
 var _last_pos := Vector2.ZERO
 var _touches := {}
 var _pinch_dist := 0.0
+var _inside := {}               ## cases du bâtiment où l'on se trouve (toit masqué)
 
 
 func _ready() -> void:
@@ -202,6 +203,7 @@ func _process(delta: float) -> void:
 	if _place_timer <= 0.0:
 		_place_timer = 0.5
 		_update_place()
+	_update_roof()
 	_action_timer -= delta
 	if _action_timer <= 0.0 and not paused:
 		_action_timer = 0.2
@@ -238,6 +240,22 @@ func _tick_survival(delta: float) -> void:
 			_wake("Tu te réveilles." if wake else "Tu te réveilles en sursaut…")
 		else:
 			(sleep_overlay.get_node("Texte") as Label).text = "Tu dors…  %02d:%02d" % [int(surv.hour()), int(fmod(surv.hour(), 1.0) * 60)]
+
+
+## Toit du bâtiment où l'on entre : masqué tant qu'on est dedans.
+func _update_roof() -> void:
+	var cell := player.cell()
+	var indoor := world.flags_at(cell) & WorldGen.F_INDOOR != 0
+	if indoor:
+		if not _inside.has(cell):
+			var cells := world.building_cells(cell)
+			_inside = {}
+			for c in cells:
+				_inside[c] = true
+			world.hide_roof(cells)
+	elif not _inside.is_empty():
+		_inside = {}
+		world.show_roof()
 
 
 func _lit_fires() -> Array:

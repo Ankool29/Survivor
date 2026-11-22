@@ -13,5 +13,5 @@ Défauts connus, intégrés provisoirement. Mis à jour au fil de l'eau.
 | 7 | Relief | Altitude limitée à 0-255 m (suffisant pour la Bretagne, à élargir pour la montagne) | mineur | ouvert |
 | 8 | Sols | Une seule tuile par sol uni : répétition visible sur les grandes surfaces (herbe, friche, mer) | mineur | à casser avec des petits éléments posés au hasard |
 | 9 | Sols | Sol de forêt de résineux d'un orange un peu vif | mineur | ouvert |
-| 10 | Bâtiments | Trop en ruine. Direction voulue : bâtiments quasiment intacts (toits, murs entiers, portes et fenêtres), la végétation reprenant légèrement le dessus ; toit masqué quand on entre | moyen | à faire plus tard |
+| 10 | Bâtiments | Trop en ruine. Direction voulue : bâtiments quasiment intacts (toits, murs entiers, portes et fenêtres), la végétation reprenant légèrement le dessus ; toit masqué quand on entre | moyen | corrigé (85 % intacts, toits, lierre) |
 | 11 | Bâtiments | Bâtiments très en biais (plus de 25°) encore en escalier ; formes d'OpenStreetMap parfois complexes (L, cours) | mineur | ouvert |
