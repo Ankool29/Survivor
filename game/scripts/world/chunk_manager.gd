@@ -211,7 +211,12 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 				ground.set_cell(cell, Tiles.SRC_GROUND, Vector2i(g % Tiles.VARIANTS, kind))
 			var d := c.decor[i]
 			if d >= 0:
-				decor.set_cell(cell, Tiles.SRC_DECOR, Tiles.decor_coords(d))
+				var objs: Array = Tiles.decor_sources.get(d, [])
+				if not objs.is_empty():
+					var pick := ((cell.x * 73856093) ^ (cell.y * 19349663)) & 0xFFFF
+					decor.set_cell(cell, objs[pick % objs.size()], Vector2i.ZERO)
+				elif d < Tiles.DECOR_COUNT:
+					decor.set_cell(cell, Tiles.SRC_DECOR, Tiles.decor_coords(d))
 	var s := Sprite2D.new()
 	s.texture = ImageTexture.create_from_image(c.shade)
 	s.region_enabled = true

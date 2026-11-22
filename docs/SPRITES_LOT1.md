@@ -48,7 +48,9 @@ pas d'objets d'inventaire, pas d'intérieurs détaillés : ce sera pour les lots
 | --- | --- | --- |
 | Style de référence | validé | Mode pro, vue 3/4 basse, palette « Bretagne abandonnée » (25 couleurs), herbe de référence commune |
 | 11 transitions de sol | intégrées | friche, lande, feuillus, résineux, marais, chemin, sable, béton, asphalte (2e version), eau (2e version), mer |
-| Sols simples, arbres, végétation, divers, ruines, joueur | à faire | |
+| Joueur | intégré | 4 directions, repos (4 images), marche (6), course (6) ; 13 générations |
+| Arbres et végétation, objets divers | intégrés | 32 objets en 2 planches de 16 (outil « objet 1 direction ») ; 25 générations |
+| Murs de ruines, sols de bâtiments, ballast, ponts | à faire | |
 
 Les réponses brutes de PixelLab sont gardées dans `tools/sprites/raw/` ; `tools/sprites/import_wang.py`
 les convertit en planches pour le jeu (`game/assets/tiles/`).

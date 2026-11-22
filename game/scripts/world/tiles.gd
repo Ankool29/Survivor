@@ -50,7 +50,39 @@ const D_ROSEAUX := 12
 const D_TOMBE := 13
 const D_AJONC := 14
 const DECOR_COUNT := 15
+# Décors sans équivalent provisoire (affichés seulement avec les sprites)
+const D_ARBRE_MORT := 15
+const D_SOUCHE := 16
+const D_SAULE := 17
+const D_POTEAU := 18
 const DECOR_COLS := 8
+
+## Objets de décor PixelLab (tailles variées) : res://assets/decor/<nom>.png,
+## décrits dans res://assets/decor/decor.json ({nom: {w, h, foot}}).
+## Chaque type de décor D_* a une ou plusieurs variantes, tirées au hasard par case.
+const DECOR_VARIANTS := {
+	D_FEUILLU_A: ["chene_a", "chene_b", "chataignier"],
+	D_FEUILLU_B: ["hetre_a", "hetre_b", "chene_a"],
+	D_RESINEUX_A: ["pin_a", "pin_b"],
+	D_RESINEUX_B: ["sapin_a", "sapin_b"],
+	D_JEUNE_ARBRE: ["bouleau_a", "bouleau_b", "aubepine", "pommier"],
+	D_BUISSON: ["buisson_a", "buisson_b", "herbes"],
+	D_RONCES: ["ronces"],
+	D_AJONC: ["ajonc"],
+	D_ROSEAUX: ["roseaux", "herbes"],
+	D_ROCHER: ["rocher", "cailloux"],
+	D_EPAVE: ["voiture", "camionnette"],
+	D_GRAVATS: ["gravats", "palette", "rondins"],
+	D_TOMBE: ["tombe"],
+	D_ARBRE_MORT: ["arbre_mort", "souche_lierre"],
+	D_SOUCHE: ["souche", "rondins"],
+	D_SAULE: ["saule"],
+	D_POTEAU: ["poteau"],
+}
+const DECOR_META := "res://assets/decor/decor.json"
+const SRC_OBJ := 100
+## D_* -> liste des sources d'objets disponibles (rempli par build_tileset)
+static var decor_sources := {}
 
 const SRC_GROUND := 0
 const SRC_DECOR := 1
@@ -120,6 +152,34 @@ static func build_tileset() -> TileSet:
 		var td := decor.get_tile_data(c, 0)
 		td.texture_origin = Vector2i(0, SIZE / 2)
 		td.y_sort_origin = 0
+	# Objets PixelLab
+	decor_sources = {}
+	if FileAccess.file_exists(DECOR_META):
+		var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DECOR_META))
+		var src_of := {}
+		var next := SRC_OBJ
+		for name in meta:
+			var path := "res://assets/decor/%s.png" % name
+			if not ResourceLoader.exists(path):
+				continue
+			var m: Dictionary = meta[name]
+			var src := TileSetAtlasSource.new()
+			src.texture = load(path)
+			src.texture_region_size = Vector2i(int(m["w"]), int(m["h"]))
+			ts.add_source(src, next)
+			src.create_tile(Vector2i.ZERO)
+			var td := src.get_tile_data(Vector2i.ZERO, 0)
+			# le pied de l'objet tombe à 4 px du bas de la case
+			td.texture_origin = Vector2i(0, int(m["foot"]) - int(m["h"]) / 2 - 12)
+			src_of[name] = next
+			next += 1
+		for d in DECOR_VARIANTS:
+			var list: Array[int] = []
+			for name in DECOR_VARIANTS[d]:
+				if src_of.has(name):
+					list.append(src_of[name])
+			if not list.is_empty():
+				decor_sources[d] = list
 	# Herbe de base, avec une variante retournée pour casser la répétition
 	if ResourceLoader.exists(BASE_PATH):
 		var base := TileSetAtlasSource.new()

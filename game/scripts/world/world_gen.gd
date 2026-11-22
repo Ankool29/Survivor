@@ -222,14 +222,18 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 		ZoneData.T_FEUILLUS, ZoneData.T_MIXTE, ZoneData.T_RESINEUX:
 			var conifer := t == ZoneData.T_RESINEUX or (t == ZoneData.T_MIXTE and patch(x, y, 9, 7) < 0.45)
 			_put(c, lx, ly, Tiles.G_SOL_RESINEUX if conifer else Tiles.G_SOL_FEUILLUS, v)
-			if a < 0.42:
+			if a < 0.40:
 				var d := Tiles.D_RESINEUX_A if conifer else Tiles.D_FEUILLU_A
 				if rnd(x, y, 8) < 0.5:
 					d += 1
 				_deco(c, lx, ly, d, F_TRUNK)
-			elif a < 0.52:
+			elif a < 0.42:
+				_deco(c, lx, ly, Tiles.D_ARBRE_MORT, F_TRUNK)
+			elif a < 0.44:
+				_deco(c, lx, ly, Tiles.D_SOUCHE, F_TRUNK)
+			elif a < 0.53:
 				_deco(c, lx, ly, Tiles.D_BUISSON)
-			elif a < 0.56:
+			elif a < 0.57:
 				_deco(c, lx, ly, Tiles.D_RONCES, F_SLOW)
 		ZoneData.T_LANDE:
 			_put(c, lx, ly, Tiles.G_LANDE, v)
@@ -245,7 +249,7 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 			if a < 0.25:
 				_deco(c, lx, ly, Tiles.D_ROSEAUX)
 			elif a < 0.28:
-				_deco(c, lx, ly, Tiles.D_JEUNE_ARBRE, F_TRUNK)
+				_deco(c, lx, ly, Tiles.D_SAULE, F_TRUNK)
 		ZoneData.T_URBAIN:
 			# Jardins et trottoirs envahis
 			_put(c, lx, ly, Tiles.G_BETON if r2 < 0.35 else Tiles.G_HERBE_HAUTE, v)

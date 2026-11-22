@@ -1,0 +1,162 @@
+{
+ "ajonc": {
+  "w": 64,
+  "h": 64,
+  "foot": 55
+ },
+ "arbre_mort": {
+  "w": 80,
+  "h": 80,
+  "foot": 77
+ },
+ "aubepine": {
+  "w": 80,
+  "h": 80,
+  "foot": 71
+ },
+ "bouleau_a": {
+  "w": 80,
+  "h": 80,
+  "foot": 77
+ },
+ "bouleau_b": {
+  "w": 80,
+  "h": 80,
+  "foot": 76
+ },
+ "buisson_a": {
+  "w": 64,
+  "h": 64,
+  "foot": 57
+ },
+ "buisson_b": {
+  "w": 64,
+  "h": 64,
+  "foot": 53
+ },
+ "cailloux": {
+  "w": 64,
+  "h": 64,
+  "foot": 53
+ },
+ "camionnette": {
+  "w": 64,
+  "h": 64,
+  "foot": 61
+ },
+ "chataignier": {
+  "w": 80,
+  "h": 80,
+  "foot": 76
+ },
+ "chene_a": {
+  "w": 80,
+  "h": 80,
+  "foot": 78
+ },
+ "chene_b": {
+  "w": 80,
+  "h": 80,
+  "foot": 77
+ },
+ "gravats": {
+  "w": 64,
+  "h": 64,
+  "foot": 55
+ },
+ "herbes": {
+  "w": 64,
+  "h": 64,
+  "foot": 58
+ },
+ "hetre_a": {
+  "w": 80,
+  "h": 80,
+  "foot": 78
+ },
+ "hetre_b": {
+  "w": 80,
+  "h": 80,
+  "foot": 77
+ },
+ "palette": {
+  "w": 64,
+  "h": 64,
+  "foot": 56
+ },
+ "pin_a": {
+  "w": 80,
+  "h": 80,
+  "foot": 77
+ },
+ "pin_b": {
+  "w": 80,
+  "h": 80,
+  "foot": 76
+ },
+ "pommier": {
+  "w": 80,
+  "h": 80,
+  "foot": 76
+ },
+ "poteau": {
+  "w": 64,
+  "h": 64,
+  "foot": 61
+ },
+ "rocher": {
+  "w": 64,
+  "h": 64,
+  "foot": 54
+ },
+ "ronces": {
+  "w": 64,
+  "h": 64,
+  "foot": 56
+ },
+ "rondins": {
+  "w": 64,
+  "h": 64,
+  "foot": 54
+ },
+ "roseaux": {
+  "w": 64,
+  "h": 64,
+  "foot": 59
+ },
+ "sapin_a": {
+  "w": 80,
+  "h": 80,
+  "foot": 77
+ },
+ "sapin_b": {
+  "w": 80,
+  "h": 80,
+  "foot": 76
+ },
+ "saule": {
+  "w": 80,
+  "h": 80,
+  "foot": 76
+ },
+ "souche": {
+  "w": 64,
+  "h": 64,
+  "foot": 55
+ },
+ "souche_lierre": {
+  "w": 80,
+  "h": 80,
+  "foot": 76
+ },
+ "tombe": {
+  "w": 64,
+  "h": 64,
+  "foot": 58
+ },
+ "voiture": {
+  "w": 64,
+  "h": 64,
+  "foot": 60
+ }
+}

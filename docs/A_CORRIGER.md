@@ -4,7 +4,7 @@ Défauts connus, intégrés provisoirement. Mis à jour au fil de l'eau.
 
 | N° | Domaine | Défaut | Gravité | Statut |
 | --- | --- | --- | --- | --- |
-| 1 | Graphismes | Sols : transitions PixelLab intégrées. Arbres, végétation, murs, joueur encore provisoires | moyen | lot de sprites 1 en cours |
+| 1 | Graphismes | Sols, végétation, objets et joueur intégrés. Murs, sols de bâtiments, rails et ponts encore provisoires | moyen | lot de sprites 1 en cours |
 | 2 | Villes | Maisons placées par îlot sans alignement sur les rues ni jardins | mineur | ouvert |
 | 3 | Ponts | L'effondrement est tiré par bloc de 8 × 8 cases : un pont peut être à moitié effondré | mineur | ouvert |
 | 4 | Murs | Murs verticaux dessinés comme des murs vus de face empilés | mineur | en attente du kit de ruines |
