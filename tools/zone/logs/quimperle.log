@@ -1,4 +1,4 @@
-== Sun Nov 22 17:33:37 UTC 2026 : zone quimperle
+== Sun Nov 22 17:57:04 UTC 2026 : zone quimperle
 Extrait OSM : https://download.geofabrik.de/europe/france/bretagne/bretagne-latest.osm.pbf
 Boite : -3.94047,47.60923,-3.16079,48.13380
 Relief IGN...
@@ -34,4 +34,4 @@ Préparation des géométries…
   rangée 24/25 (504 tuiles écrites)
   rangée 25/25 (510 tuiles écrites)
 Termine : 510 tuiles ; {"aucune": 515345047, "voie_rapide": 471527, "principale": 486109, "secondaire": 3425527, "rue": 9545538, "chemin": 5288769, "rail": 211243}
-== termine Sun Nov 22 17:44:01 UTC 2026
+== termine Sun Nov 22 18:06:16 UTC 2026
