@@ -16,6 +16,54 @@ var run := false
 var facing := Vector2.DOWN
 var moving := false
 var _anim := 0.0
+var _sprite: AnimatedSprite2D     ## sprite PixelLab, si présent
+var _running_now := false
+
+const SHEET := "res://assets/characters/joueur.png"
+const SHEET_META := "res://assets/characters/joueur.json"
+
+
+func _ready() -> void:
+	if not ResourceLoader.exists(SHEET) or not FileAccess.file_exists(SHEET_META):
+		return
+	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SHEET_META))
+	var tex: Texture2D = load(SHEET)
+	var fw := int(meta["frame_w"])
+	var fh := int(meta["frame_h"])
+	var frames := SpriteFrames.new()
+	frames.remove_animation("default")
+	var fps := {"repos": 5.0, "marche": 9.0, "course": 12.0}
+	for a in meta["anims"]:
+		var name := "%s_%s" % [a["name"], a["dir"]]
+		frames.add_animation(name)
+		frames.set_animation_speed(name, fps.get(a["name"], 8.0))
+		frames.set_animation_loop(name, true)
+		for i in int(a["frames"]):
+			var at := AtlasTexture.new()
+			at.atlas = tex
+			at.region = Rect2(i * fw, int(a["row"]) * fh, fw, fh)
+			frames.add_frame(name, at)
+	_sprite = AnimatedSprite2D.new()
+	_sprite.sprite_frames = frames
+	_sprite.centered = false
+	_sprite.position = Vector2(-fw / 2.0, -float(meta["feet_y"]) - 1.0)
+	add_child(_sprite)
+	_sprite.play("repos_south")
+
+
+func _direction_name() -> String:
+	if absf(facing.x) > absf(facing.y):
+		return "east" if facing.x > 0 else "west"
+	return "south" if facing.y > 0 else "north"
+
+
+func _update_sprite() -> void:
+	var anim := "repos"
+	if moving:
+		anim = "course" if _running_now else "marche"
+	var name := anim + "_" + _direction_name()
+	if _sprite.animation != name:
+		_sprite.play(name)
 
 
 func cell() -> Vector2i:
@@ -28,6 +76,7 @@ func _process(delta: float) -> void:
 	if keys.length() > 0.1:
 		dir = keys
 	var running := run or Input.is_action_pressed("run")
+	_running_now = running
 	moving = dir.length() > 0.1
 	if moving:
 		if dir.length() > 1.0:
@@ -40,7 +89,10 @@ func _process(delta: float) -> void:
 		_try_move(Vector2(step.x, 0))
 		_try_move(Vector2(0, step.y))
 		_anim += delta * (10.0 if running else 7.0)
-	queue_redraw()
+	if _sprite:
+		_update_sprite()
+	else:
+		queue_redraw()
 
 
 func _try_move(step: Vector2) -> void:
@@ -68,6 +120,10 @@ func blocked(p: Vector2) -> bool:
 
 ## Silhouette provisoire, remplacée par le sprite PixelLab.
 func _draw() -> void:
+	if _sprite:
+		draw_set_transform(Vector2(0, -2), 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, 10, Color(0, 0, 0, 0.28))
+		return
 	var bob := sin(_anim) * 1.5 if moving else 0.0
 	draw_set_transform(Vector2.ZERO)
 	# ombre
