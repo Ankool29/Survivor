@@ -48,6 +48,7 @@ func _ready() -> void:
 	camera.limit_right = zone.width * Tiles.SIZE
 	camera.limit_bottom = zone.height * Tiles.SIZE
 	player.add_child(camera)
+	camera.make_current()
 	map_view.zone = zone
 	new_game(seed_value)
 
@@ -76,16 +77,22 @@ func _process(delta: float) -> void:
 	if world == null:
 		return
 	player.input_vector = joystick.vector
-	var vp := get_viewport_rect().size / camera.zoom
-	world.update_view(Rect2(camera.get_screen_center_position() - vp * 0.5, vp))
+	if not camera.is_current():
+		camera.make_current()
+	var screen := get_viewport_rect().size
+	if screen.x < 64 or screen.y < 64:
+		screen = Vector2(1280, 576)
+	var vp := screen / camera.zoom
+	world.update_view(Rect2(player.position - vp * 0.5, vp))
 	_place_timer -= delta
 	if _place_timer <= 0.0:
 		_place_timer = 0.5
 		_update_place()
 	map_view.player_cell = player.position / Tiles.SIZE
-	debug_label.text = "%d img/s · morceaux %d · fabrication %.1f ms (max %.1f) · pose %.1f ms (max %.1f) · case %d, %d · alt. %d m" % [
+	debug_label.text = "%d img/s · morceaux %d · fabrication %.1f ms (max %.1f) · pose %.1f ms (max %.1f) · écran %dx%d · caméra %s · case %d, %d · alt. %d m" % [
 		Engine.get_frames_per_second(), world.loaded_count(), world.last_gen_ms, world.max_gen_ms,
-		world.last_apply_ms, world.max_apply_ms,
+		world.last_apply_ms, world.max_apply_ms, int(get_viewport_rect().size.x), int(get_viewport_rect().size.y),
+		"ok" if camera.is_current() else "inactive",
 		player.cell().x, player.cell().y, zone.e_at(player.cell().x, player.cell().y)]
 
 
@@ -154,9 +161,7 @@ func _build_ui() -> void:
 	place_label.add_theme_constant_override("outline_size", 6)
 	hud.add_child(place_label)
 	debug_label = Label.new()
-	debug_label.position = Vector2(10, 548)
-	debug_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	debug_label.position = Vector2(10, -26)
+	debug_label.position = Vector2(10, 44)
 	debug_label.add_theme_font_size_override("font_size", 12)
 	debug_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	debug_label.add_theme_constant_override("outline_size", 4)

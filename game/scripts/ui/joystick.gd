@@ -14,12 +14,14 @@ var _knob := Vector2.ZERO
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	get_viewport().size_changed.connect(queue_redraw)
+	resized.connect(queue_redraw)
 
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var e := event as InputEventScreenTouch
-		var area := get_viewport_rect().size
+		var area := size
 		if e.pressed and _touch == -1 and e.position.x < area.x * 0.45 and e.position.y > area.y * 0.2:
 			_touch = e.index
 			_origin = e.position
@@ -54,7 +56,7 @@ func _update() -> void:
 
 func _draw() -> void:
 	if _touch == -1:
-		var area := get_viewport_rect().size
+		var area := size
 		var hint := Vector2(area.x * 0.12, area.y * 0.75)
 		draw_circle(hint, RADIUS, Color(1, 1, 1, 0.06))
 		draw_arc(hint, RADIUS, 0, TAU, 48, Color(1, 1, 1, 0.18), 2.0)
