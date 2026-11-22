@@ -1,4 +1,5 @@
 name: Donnees de zone
+# v2
 
 # Fabrique les donnees d'une zone de jeu a partir d'OpenStreetMap et du relief
 # IGN, puis les enregistre dans game/data/zones/<zone>/. Le journal est ecrit

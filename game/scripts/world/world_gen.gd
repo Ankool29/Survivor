@@ -1,0 +1,375 @@
+class_name WorldGen
+extends RefCounted
+## Fabrique le contenu d'un morceau (32 x 32 cases) à partir des données de zone.
+## Toujours le même résultat pour une même graine : rien n'est stocké tant que
+## le joueur ne modifie rien.
+
+const CHUNK := 32
+
+# Drapeaux de déplacement par case
+const F_BLOCK := 1    # infranchissable (mer, eau profonde, mur, épave)
+const F_TRUNK := 2    # petit obstacle au pied de la case (tronc, rocher, tombe)
+const F_SLOW := 4     # ralentit (marais, ronces, gué)
+const F_INDOOR := 8   # intérieur de bâtiment
+
+const POI_SIZE := {
+	"hopital": Vector2i(14, 10), "supermarche": Vector2i(13, 10), "eglise": Vector2i(7, 11),
+	"gare": Vector2i(12, 6), "mairie": Vector2i(9, 7), "ecole": Vector2i(11, 8),
+	"pharmacie": Vector2i(5, 4), "epicerie": Vector2i(5, 4), "quincaillerie": Vector2i(8, 6),
+	"garage": Vector2i(7, 6), "station_service": Vector2i(6, 5), "bibliotheque": Vector2i(7, 6),
+	"gendarmerie": Vector2i(8, 7), "pompiers": Vector2i(8, 6), "entrepot": Vector2i(12, 9),
+	"magasin": Vector2i(9, 7), "grand_batiment": Vector2i(9, 7), "ferme": Vector2i(8, 6),
+	"chateau": Vector2i(12, 10), "musee": Vector2i(8, 6), "marche": Vector2i(8, 6),
+}
+
+var zone: ZoneData
+var seed_value := 1
+var _pois_by_chunk := {}
+
+
+class ChunkData:
+	var cx := 0
+	var cy := 0
+	var ground := PackedInt32Array()   # Tiles.G_* * 4 + variante
+	var decor := PackedInt32Array()    # Tiles.D_* ou -1
+	var flags := PackedByteArray()
+	var shade: Image
+	var buildings: Array = []          # {rect: Rect2i (cases monde), kind: String, name: String}
+
+
+func _init(z: ZoneData, s: int) -> void:
+	zone = z
+	seed_value = s
+	for p in zone.pois:
+		var key := Vector2i(int(p["x"]) / CHUNK, int(p["y"]) / CHUNK)
+		if not _pois_by_chunk.has(key):
+			_pois_by_chunk[key] = []
+		_pois_by_chunk[key].append(p)
+
+
+## Nombre pseudo-aléatoire stable dans [0, 1) pour une case et un usage.
+func rnd(x: int, y: int, salt: int) -> float:
+	var n: int = x * 374761393 + y * 668265263 + (seed_value + salt * 7919) * 982451653
+	n = (n ^ (n >> 13)) * 1274126177
+	n = n ^ (n >> 16)
+	return float(n & 0xFFFFFF) / 16777216.0
+
+
+## Bruit doux dans [0, 1) : taches de quelques cases au lieu d'un damier.
+func patch(x: int, y: int, scale: int, salt: int) -> float:
+	var fx := x / float(scale)
+	var fy := y / float(scale)
+	var ix := floori(fx)
+	var iy := floori(fy)
+	var tx := fx - ix
+	var ty := fy - iy
+	tx = tx * tx * (3.0 - 2.0 * tx)
+	ty = ty * ty * (3.0 - 2.0 * ty)
+	var a := lerpf(rnd(ix, iy, salt), rnd(ix + 1, iy, salt), tx)
+	var b := lerpf(rnd(ix, iy + 1, salt), rnd(ix + 1, iy + 1, salt), tx)
+	return lerpf(a, b, ty)
+
+
+func generate(cx: int, cy: int) -> ChunkData:
+	var c := ChunkData.new()
+	c.cx = cx
+	c.cy = cy
+	var n := CHUNK * CHUNK
+	c.ground.resize(n)
+	c.decor.resize(n)
+	c.decor.fill(-1)
+	c.flags.resize(n)
+	var x0 := cx * CHUNK
+	var y0 := cy * CHUNK
+	# 1. sol, voies, eau
+	for ly in CHUNK:
+		for lx in CHUNK:
+			_cell(c, lx, ly, x0 + lx, y0 + ly)
+	# 2. bâtiments (contenus dans le morceau)
+	_place_buildings(c, x0, y0)
+	# 3. ombrage du relief (1 case de marge pour un raccord sans couture)
+	c.shade = _shade(x0, y0)
+	return c
+
+
+func _put(c: ChunkData, lx: int, ly: int, g: int, variant: int) -> void:
+	c.ground[ly * CHUNK + lx] = g * Tiles.VARIANTS + (variant % Tiles.VARIANTS)
+
+
+func _deco(c: ChunkData, lx: int, ly: int, d: int, flag := 0) -> void:
+	var i := ly * CHUNK + lx
+	c.decor[i] = d
+	c.flags[i] |= flag
+
+
+func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
+	var t := zone.t_at(x, y)
+	var road := zone.r_at(x, y)
+	var v := int(rnd(x, y, 1) * 4.0)
+	var r2 := patch(x, y, 5, 2) * 0.8 + rnd(x, y, 2) * 0.2
+	var i := ly * CHUNK + lx
+	if not zone.inside(x, y):
+		_put(c, lx, ly, Tiles.G_MER, v)
+		c.flags[i] = F_BLOCK
+		return
+	var water := t == ZoneData.T_MER or t == ZoneData.T_EAU
+	if road != ZoneData.R_AUCUNE:
+		if water:
+			# Pont : un sur quatre s'est effondré en 30 ans
+			if rnd(x >> 3, y >> 3, 3) < 0.25:
+				_water(c, lx, ly, x, y, t, v)
+			else:
+				_put(c, lx, ly, Tiles.G_RAIL if road == ZoneData.R_RAIL else Tiles.G_PONT, v)
+			return
+		match road:
+			ZoneData.R_VOIE_RAPIDE, ZoneData.R_PRINCIPALE:
+				_put(c, lx, ly, Tiles.G_ASPHALTE_ENVAHI if r2 < 0.3 else Tiles.G_ASPHALTE, v)
+				if rnd(x, y, 4) < 0.025:
+					_deco(c, lx, ly, Tiles.D_EPAVE, F_BLOCK)
+				elif rnd(x, y, 5) < 0.02:
+					_deco(c, lx, ly, Tiles.D_BUISSON)
+			ZoneData.R_SECONDAIRE, ZoneData.R_RUE:
+				_put(c, lx, ly, Tiles.G_ASPHALTE_ENVAHI if r2 < 0.45 else Tiles.G_ROUTE, v)
+				var e := rnd(x, y, 4)
+				if e < 0.008:
+					_deco(c, lx, ly, Tiles.D_EPAVE, F_BLOCK)
+				elif e < 0.05:
+					_deco(c, lx, ly, Tiles.D_BUISSON)
+				elif e < 0.06:
+					_deco(c, lx, ly, Tiles.D_JEUNE_ARBRE, F_TRUNK)
+			ZoneData.R_CHEMIN:
+				_put(c, lx, ly, Tiles.G_CHEMIN if r2 < 0.6 else Tiles.G_FRICHE, v)
+			ZoneData.R_RAIL:
+				_put(c, lx, ly, Tiles.G_RAIL, v)
+				if rnd(x, y, 4) < 0.04:
+					_deco(c, lx, ly, Tiles.D_BUISSON)
+		return
+	if water:
+		_water(c, lx, ly, x, y, t, v)
+		return
+	var a := rnd(x, y, 6)
+	match t:
+		ZoneData.T_SABLE:
+			_put(c, lx, ly, Tiles.G_SABLE, v)
+			if a < 0.02:
+				_deco(c, lx, ly, Tiles.D_ROCHER, F_TRUNK)
+		ZoneData.T_PRAIRIE:
+			_put(c, lx, ly, Tiles.G_HERBE_HAUTE, v)
+			_wild(c, lx, ly, a, 0.06, 0.03, 0.03)
+		ZoneData.T_CHAMP:
+			# 30 ans sans culture : friche, ronces, jeunes arbres
+			_put(c, lx, ly, Tiles.G_FRICHE if r2 < 0.7 else Tiles.G_HERBE_HAUTE, v)
+			_wild(c, lx, ly, a, 0.10, 0.07, 0.06)
+		ZoneData.T_FEUILLUS, ZoneData.T_MIXTE, ZoneData.T_RESINEUX:
+			var conifer := t == ZoneData.T_RESINEUX or (t == ZoneData.T_MIXTE and patch(x, y, 9, 7) < 0.45)
+			_put(c, lx, ly, Tiles.G_SOL_RESINEUX if conifer else Tiles.G_SOL_FEUILLUS, v)
+			if a < 0.42:
+				var d := Tiles.D_RESINEUX_A if conifer else Tiles.D_FEUILLU_A
+				if rnd(x, y, 8) < 0.5:
+					d += 1
+				_deco(c, lx, ly, d, F_TRUNK)
+			elif a < 0.52:
+				_deco(c, lx, ly, Tiles.D_BUISSON)
+			elif a < 0.56:
+				_deco(c, lx, ly, Tiles.D_RONCES, F_SLOW)
+		ZoneData.T_LANDE:
+			_put(c, lx, ly, Tiles.G_LANDE, v)
+			if a < 0.18:
+				_deco(c, lx, ly, Tiles.D_AJONC, F_SLOW)
+			elif a < 0.21:
+				_deco(c, lx, ly, Tiles.D_ROCHER, F_TRUNK)
+			elif a < 0.24:
+				_deco(c, lx, ly, Tiles.D_JEUNE_ARBRE, F_TRUNK)
+		ZoneData.T_MARAIS:
+			_put(c, lx, ly, Tiles.G_MARAIS, v)
+			c.flags[i] |= F_SLOW
+			if a < 0.25:
+				_deco(c, lx, ly, Tiles.D_ROSEAUX)
+			elif a < 0.28:
+				_deco(c, lx, ly, Tiles.D_JEUNE_ARBRE, F_TRUNK)
+		ZoneData.T_URBAIN:
+			# Jardins et trottoirs envahis
+			_put(c, lx, ly, Tiles.G_BETON if r2 < 0.35 else Tiles.G_HERBE_HAUTE, v)
+			_wild(c, lx, ly, a, 0.07, 0.02, 0.05)
+		ZoneData.T_INDUSTRIEL:
+			_put(c, lx, ly, Tiles.G_BETON_INDUS if r2 < 0.75 else Tiles.G_FRICHE, v)
+			if a < 0.04:
+				_deco(c, lx, ly, Tiles.D_GRAVATS)
+			elif a < 0.09:
+				_deco(c, lx, ly, Tiles.D_BUISSON)
+			elif a < 0.1:
+				_deco(c, lx, ly, Tiles.D_EPAVE, F_BLOCK)
+		ZoneData.T_ROCHE:
+			_put(c, lx, ly, Tiles.G_ROCHE, v)
+			if a < 0.15:
+				_deco(c, lx, ly, Tiles.D_ROCHER, F_TRUNK)
+		ZoneData.T_CIMETIERE:
+			_put(c, lx, ly, Tiles.G_HERBE_HAUTE, v)
+			if (x + y) % 2 == 0 and a < 0.7:
+				_deco(c, lx, ly, Tiles.D_TOMBE, F_TRUNK)
+		ZoneData.T_PARC:
+			_put(c, lx, ly, Tiles.G_HERBE_HAUTE, v)
+			if a < 0.22:
+				_deco(c, lx, ly, Tiles.D_FEUILLU_A + int(rnd(x, y, 8) * 2), F_TRUNK)
+			else:
+				_wild(c, lx, ly, a - 0.22, 0.06, 0.02, 0.02)
+		_:
+			_put(c, lx, ly, Tiles.G_FRICHE, v)
+
+
+func _wild(c: ChunkData, lx: int, ly: int, a: float, bush: float, brambles: float, young: float) -> void:
+	if a < bush:
+		_deco(c, lx, ly, Tiles.D_BUISSON)
+	elif a < bush + brambles:
+		_deco(c, lx, ly, Tiles.D_RONCES, F_SLOW)
+	elif a < bush + brambles + young:
+		_deco(c, lx, ly, Tiles.D_JEUNE_ARBRE, F_TRUNK)
+
+
+func _water(c: ChunkData, lx: int, ly: int, x: int, y: int, t: int, v: int) -> void:
+	var i := ly * CHUNK + lx
+	if t == ZoneData.T_MER:
+		_put(c, lx, ly, Tiles.G_MER, v)
+		c.flags[i] |= F_BLOCK
+		return
+	_put(c, lx, ly, Tiles.G_EAU, v)
+	# Eau profonde si large, gué si c'est un ruisseau d'une case
+	var wet := 0
+	for dy in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			if zone.is_water(x + dx, y + dy):
+				wet += 1
+	c.flags[i] |= F_BLOCK if wet >= 6 else F_SLOW
+
+
+func _free(c: ChunkData, r: Rect2i, margin: int, occupied: PackedByteArray) -> bool:
+	if r.position.x < 0 or r.position.y < 0 or r.end.x > CHUNK or r.end.y > CHUNK:
+		return false
+	for ly in range(r.position.y - margin, r.end.y + margin):
+		for lx in range(r.position.x - margin, r.end.x + margin):
+			if lx < 0 or ly < 0 or lx >= CHUNK or ly >= CHUNK:
+				continue
+			var i := ly * CHUNK + lx
+			if occupied[i]:
+				return false
+			var inner := r.has_point(Vector2i(lx, ly))
+			if inner and (c.flags[i] & F_BLOCK or zone.r_at(c.cx * CHUNK + lx, c.cy * CHUNK + ly) != 0):
+				return false
+	return true
+
+
+func _place_buildings(c: ChunkData, x0: int, y0: int) -> void:
+	var occupied := PackedByteArray()
+	occupied.resize(CHUNK * CHUNK)
+	var key := Vector2i(c.cx, c.cy)
+	# Grands bâtiments réels, à leur emplacement
+	for p in _pois_by_chunk.get(key, []):
+		var kind: String = p["kind"]
+		if kind in ["monument", "chateau_eau", "phare", "militaire"]:
+			continue
+		var size: Vector2i = POI_SIZE.get(kind, Vector2i(7, 6))
+		var area := float(p.get("area_m2", 0))
+		if area > 0:
+			var side := clampf(sqrt(area) / 4.0, 5.0, 16.0)
+			size = Vector2i(int(side * 1.2), int(side))
+		var px := int(p["x"]) - x0 - size.x / 2
+		var py := int(p["y"]) - y0 - size.y / 2
+		px = clampi(px, 0, CHUNK - size.x)
+		py = clampi(py, 0, CHUNK - size.y)
+		var placed := false
+		for attempt in 9:
+			var r := Rect2i(px + (attempt % 3 - 1) * 3, py + (attempt / 3 - 1) * 3, size.x, size.y)
+			if _free(c, r, 1, occupied):
+				_build(c, r, occupied, true, kind, p.get("name", ""))
+				placed = true
+				break
+		if not placed and size.x > 6:
+			var r := Rect2i(px, py, size.x - 2, size.y - 2)
+			if _free(c, r, 0, occupied):
+				_build(c, r, occupied, true, kind, p.get("name", ""))
+	# Maisons et ateliers : d'autant plus que le bâti réel est dense
+	var urban := 0
+	var dens := 0
+	for ly in CHUNK:
+		for lx in CHUNK:
+			var t := zone.t_at(x0 + lx, y0 + ly)
+			var d := zone.d_at(x0 + lx, y0 + ly)
+			dens += d
+			if t == ZoneData.T_URBAIN or t == ZoneData.T_INDUSTRIEL or d > 10:
+				urban += 1
+	if urban < 4:
+		return
+	var attempts := mini(int(dens / 255.0 * 1.4) + urban / 30, 90)
+	for k in attempts:
+		var lx := int(rnd(c.cx * 131 + k, c.cy, 20) * CHUNK)
+		var ly := int(rnd(c.cx, c.cy * 131 + k, 21) * CHUNK)
+		var wx := x0 + lx
+		var wy := y0 + ly
+		var t := zone.t_at(wx, wy)
+		var d := zone.d_at(wx, wy)
+		if not (t == ZoneData.T_URBAIN or t == ZoneData.T_INDUSTRIEL or d > 10):
+			continue
+		if rnd(wx, wy, 22) * 255.0 > d + 40:
+			continue
+		var indus := t == ZoneData.T_INDUSTRIEL
+		var w := 6 + int(rnd(wx, wy, 23) * 5) if indus else 3 + int(rnd(wx, wy, 23) * 4)
+		var h := 5 + int(rnd(wx, wy, 24) * 4) if indus else 3 + int(rnd(wx, wy, 24) * 3)
+		var r := Rect2i(lx - w / 2, ly - h / 2, w, h)
+		if _free(c, r, 1, occupied):
+			_build(c, r, occupied, false, "entrepot" if indus else "maison", "")
+
+
+func _build(c: ChunkData, r: Rect2i, occupied: PackedByteArray, special: bool, kind: String, label: String) -> void:
+	var x0 := c.cx * CHUNK
+	var y0 := c.cy * CHUNK
+	var ruin := rnd(x0 + r.position.x, y0 + r.position.y, 30)
+	var breaches := 1 + int(ruin * 3.0)
+	for ly in range(r.position.y, r.end.y):
+		for lx in range(r.position.x, r.end.x):
+			var i := ly * CHUNK + lx
+			occupied[i] = 1
+			c.decor[i] = -1
+			c.flags[i] = 0
+			var wx := x0 + lx
+			var wy := y0 + ly
+			var edge := lx == r.position.x or ly == r.position.y or lx == r.end.x - 1 or ly == r.end.y - 1
+			var v := int(rnd(wx, wy, 31) * 4.0)
+			_put(c, lx, ly, Tiles.G_CARRELAGE if special else Tiles.G_SOL_BATIMENT, v)
+			if edge:
+				var corner := (lx == r.position.x or lx == r.end.x - 1) and (ly == r.position.y or ly == r.end.y - 1)
+				var door := not corner and rnd(wx, wy, 32) < float(breaches) / float(2 * (r.size.x + r.size.y))
+				if door:
+					c.flags[i] = F_INDOOR
+				else:
+					_deco(c, lx, ly, Tiles.D_MUR_BRISE if rnd(wx, wy, 33) < ruin * 0.5 else Tiles.D_MUR, F_BLOCK)
+			else:
+				c.flags[i] = F_INDOOR
+				var a := rnd(wx, wy, 34)
+				if a < 0.10:
+					_deco(c, lx, ly, Tiles.D_GRAVATS)
+				elif a < 0.10 + ruin * 0.08:
+					_deco(c, lx, ly, Tiles.D_BUISSON)
+				elif a < 0.12 + ruin * 0.1:
+					_deco(c, lx, ly, Tiles.D_JEUNE_ARBRE, F_TRUNK)
+	# Garantir au moins une ouverture au sud
+	var door_x := r.position.x + 1 + int(rnd(x0 + r.position.x, y0, 35) * maxf(1, r.size.x - 2))
+	var di := (r.end.y - 1) * CHUNK + door_x
+	c.decor[di] = -1
+	c.flags[di] = F_INDOOR
+	c.buildings.append({
+		"rect": Rect2i(r.position + Vector2i(x0, y0), r.size),
+		"kind": kind, "name": label,
+	})
+
+
+func _shade(x0: int, y0: int) -> Image:
+	var img := Image.create(CHUNK + 2, CHUNK + 2, false, Image.FORMAT_L8)
+	for ly in CHUNK + 2:
+		for lx in CHUNK + 2:
+			var x := x0 + lx - 1
+			var y := y0 + ly - 1
+			var gx := zone.e_at(x + 1, y) - zone.e_at(x - 1, y)
+			var gy := zone.e_at(x, y + 1) - zone.e_at(x, y - 1)
+			var v := clampf(0.9 + (gx + gy) * 0.035, 0.6, 1.0)
+			img.set_pixel(lx, ly, Color(v, v, v))
+	return img
