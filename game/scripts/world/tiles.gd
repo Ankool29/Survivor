@@ -31,7 +31,8 @@ const G_RAIL := 16
 const G_PONT := 17
 const G_SOL_BATIMENT := 18
 const G_CARRELAGE := 19
-const GROUND_COUNT := 20
+const G_MUR := 20
+const GROUND_COUNT := 21
 
 # --- Décor (index dans la planche, 8 par ligne)
 const D_FEUILLU_A := 0
@@ -93,7 +94,7 @@ const SRC_WANG := 10        ## + index dans WANG_NAMES
 ## Fichiers : res://assets/tiles/wang/<nom>.png, 16 tuiles rangées par coins
 ## (NO=8, NE=4, SO=2, SE=1), herbe transparente. Sol de base : base_herbe.png.
 const WANG_NAMES := ["friche", "lande", "feuillus", "resineux", "marais", "chemin",
-	"sable", "beton", "asphalte", "eau", "mer"]
+	"sable", "beton", "asphalte", "ballast", "eau", "mer", "pont", "sol_ruine", "mur"]
 const BASE_PATH := "res://assets/tiles/base_herbe.png"
 
 ## Transition utilisée par chaque type de sol ("" = l'herbe de base).
@@ -101,13 +102,28 @@ const BASE_PATH := "res://assets/tiles/base_herbe.png"
 const WANG_OF_GROUND := {
 	G_HERBE_HAUTE: "", G_FRICHE: "friche", G_LANDE: "lande", G_ROCHE: "lande",
 	G_SOL_FEUILLUS: "feuillus", G_SOL_RESINEUX: "resineux", G_MARAIS: "marais",
-	G_CHEMIN: "chemin", G_RAIL: "chemin", G_SABLE: "sable",
+	G_CHEMIN: "chemin", G_RAIL: "ballast", G_SABLE: "sable",
 	G_BETON: "beton", G_BETON_INDUS: "beton",
 	G_ASPHALTE: "asphalte", G_ASPHALTE_ENVAHI: "asphalte", G_ROUTE: "asphalte",
-	G_EAU: "eau", G_PONT: "eau", G_MER: "mer",
+	G_EAU: "eau", G_PONT: "pont", G_MER: "mer",
+	G_SOL_BATIMENT: "sol_ruine", G_CARRELAGE: "sol_ruine", G_MUR: "mur",
 }
-## Sols toujours dessinés en tuile pleine au-dessus des transitions.
-const OVERLAY_GROUNDS := [G_RAIL, G_PONT, G_ROCHE, G_SOL_BATIMENT, G_CARRELAGE]
+## Murs : si la transition « mur » existe, les murs sont dessinés par elle
+## (et non par les objets de décor D_MUR / D_MUR_BRISE).
+const WALL_DECOR := [D_MUR, D_MUR_BRISE]
+
+
+## Jeux en relief (mur) : code des 4 coins à 3 états -> index de tuile.
+## Coin : 0 = herbe, 1 = dessus du mur, 2 = face (la case sous un dessus de mur).
+static func cliff_lookup(name: String) -> Dictionary:
+	var path := "res://assets/tiles/wang/%s.json" % name
+	if not FileAccess.file_exists(path):
+		return {}
+	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var out := {}
+	for k in d["lookup"]:
+		out[int(k)] = int(d["lookup"][k])
+	return out
 
 
 static func wang_path(name: String) -> String:
@@ -119,6 +135,7 @@ const GROUND_COLORS := [
 	Color8(72, 92, 70), Color8(118, 116, 108), Color8(100, 98, 96), Color8(120, 118, 110),
 	Color8(64, 64, 66), Color8(72, 80, 60), Color8(96, 92, 86), Color8(124, 100, 70),
 	Color8(92, 84, 76), Color8(110, 86, 60), Color8(88, 80, 74), Color8(150, 146, 136),
+	Color8(150, 136, 120),
 ]
 
 
@@ -198,7 +215,7 @@ static func build_tileset() -> TileSet:
 		w.texture = load(path)
 		w.texture_region_size = Vector2i(SIZE, SIZE)
 		ts.add_source(w, SRC_WANG + i)
-		for m in 16:
+		for m in w.texture.get_width() / SIZE:
 			w.create_tile(Vector2i(m, 0))
 	return ts
 

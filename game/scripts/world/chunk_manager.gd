@@ -17,6 +17,8 @@ var decor: TileMapLayer
 var wang_layers: Array[TileMapLayer] = []   ## une couche par transition, décalée d'une demi-case
 var _wang_of_kind := PackedInt32Array()     ## Tiles.G_* -> index de couche, -1 = aucune, -2 = herbe
 var _has_base := false
+var _walls_wang := false
+var _cliff := {}          ## index de couche -> table de correspondance (jeux en relief)
 
 var _chunks := {}           # Vector2i -> WorldGen.ChunkData
 var _shades := {}           # Vector2i -> Sprite2D
@@ -66,6 +68,11 @@ func setup(z: ZoneData, seed_value: int) -> void:
 				var i := Tiles.WANG_NAMES.find(name)
 				if ts.has_source(Tiles.SRC_WANG + i):
 					_wang_of_kind[k] = i
+	_walls_wang = _has_base and _wang_of_kind[Tiles.G_MUR] >= 0
+	for i in Tiles.WANG_NAMES.size():
+		var lk := Tiles.cliff_lookup(Tiles.WANG_NAMES[i])
+		if not lk.is_empty():
+			_cliff[i] = lk
 	# Tuiles pleines par-dessus (provisoires, ponts, rails, sols de bâtiments)
 	ground = TileMapLayer.new()
 	ground.name = "Sol"
@@ -179,6 +186,8 @@ func _start_task(key: Vector2i) -> void:
 func _generate_in_thread(key: Vector2i, g: WorldGen) -> void:
 	var t0 := Time.get_ticks_usec()
 	var c := g.generate(key.x, key.y)
+	if _has_base:
+		c.dual = _compute_dual(c, key.x * CHUNK, key.y * CHUNK)
 	_task_ms = (Time.get_ticks_usec() - t0) / 1000.0
 	_task_result = c
 
@@ -200,16 +209,20 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 	var x0 := key.x * CHUNK
 	var y0 := key.y * CHUNK
 	if _has_base:
-		_apply_dual(c, x0, y0)
+		if c.dual.is_empty():
+			c.dual = _compute_dual(c, x0, y0)
+		_apply_dual(c)
 	for ly in CHUNK:
 		for lx in CHUNK:
 			var i := ly * CHUNK + lx
 			var g := c.ground[i]
 			var cell := Vector2i(x0 + lx, y0 + ly)
 			var kind := g / Tiles.VARIANTS
-			if not _has_base or _wang_of_kind[kind] == -1 or kind in Tiles.OVERLAY_GROUNDS:
+			if not _has_base or _wang_of_kind[kind] == -1:
 				ground.set_cell(cell, Tiles.SRC_GROUND, Vector2i(g % Tiles.VARIANTS, kind))
 			var d := c.decor[i]
+			if d in Tiles.WALL_DECOR and _walls_wang:
+				d = -1
 			if d >= 0:
 				var objs: Array = Tiles.decor_sources.get(d, [])
 				if not objs.is_empty():
@@ -235,9 +248,12 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 	max_apply_ms = maxf(max_apply_ms, last_apply_ms)
 
 
-## Chaque transition sur la grille décalée : la case double
+## (Calculé en arrière-plan.) Chaque transition sur la grille décalée : la case double
 ## (X, Y) a pour coins les cases (X-1, Y-1), (X, Y-1), (X-1, Y), (X, Y).
-func _apply_dual(c: WorldGen.ChunkData, x0: int, y0: int) -> void:
+func _compute_dual(c: WorldGen.ChunkData, x0: int, y0: int) -> Array:
+	var out: Array = []
+	for i in wang_layers.size():
+		out.append(PackedInt32Array())
 	const K := CHUNK + 1
 	var corners := PackedInt32Array([0, 0, 0, 0])
 	for dy in CHUNK:
@@ -257,9 +273,63 @@ func _apply_dual(c: WorldGen.ChunkData, x0: int, y0: int) -> void:
 						seen = true
 				if seen:
 					continue
+				if _cliff.has(layer):
+					continue
 				var mask := (8 if corners[0] == layer else 0) | (4 if corners[1] == layer else 0) \
 					| (2 if corners[2] == layer else 0) | (1 if corners[3] == layer else 0)
-				wang_layers[layer].set_cell(Vector2i(x0 + dx, y0 + dy), Tiles.SRC_WANG + layer, Vector2i(mask, 0))
+				out[layer].append_array([x0 + dx, y0 + dy, mask])
+	# Jeux en relief (murs) : un coin sous un dessus de mur porte la face du mur
+	if c.buildings.is_empty():
+		return out
+	var zone_r := Rect2i()
+	for b in c.buildings:
+		var br: Rect2i = b["rect"]
+		zone_r = br if zone_r.size == Vector2i.ZERO else zone_r.merge(br)
+	zone_r = zone_r.grow(2).intersection(Rect2i(x0, y0, CHUNK, CHUNK))
+	for layer in _cliff:
+		var lookup: Dictionary = _cliff[layer]
+		for dy in range(zone_r.position.y - y0, zone_r.end.y - y0):
+			for dx in range(zone_r.position.x - x0, zone_r.end.x - x0):
+				var r := dy * K + dx
+				var code := 0
+				var any_wall := false
+				for j in 4:
+					var ri: int = r + (1 if j % 2 == 1 else 0) + (K if j >= 2 else 0)
+					var st := 0
+					if _wang_of_kind[c.kinds[ri]] == layer:
+						st = 1
+					elif ri >= K and _wang_of_kind[c.kinds[ri - K]] == layer:
+						st = 2
+					if st != 0:
+						any_wall = true
+					code = code * 3 + st
+				if not any_wall:
+					continue
+				var idx: int = lookup.get(code, -1)
+				if idx < 0:
+					# combinaison absente : on ignore la face
+					var c2 := 0
+					var p := 1
+					var tmp := code
+					for j in 4:
+						var st2 := tmp % 3
+						tmp /= 3
+						c2 += (st2 if st2 == 1 else 0) * p
+						p *= 3
+					idx = lookup.get(c2, -1)
+				if idx >= 0:
+					out[layer].append_array([x0 + dx, y0 + dy, idx])
+	return out
+
+
+## Pose les tuiles de transition déjà choisies (image principale).
+func _apply_dual(c: WorldGen.ChunkData) -> void:
+	for layer in c.dual.size():
+		var arr: PackedInt32Array = c.dual[layer]
+		var tl := wang_layers[layer]
+		var src := Tiles.SRC_WANG + layer
+		for k in range(0, arr.size(), 3):
+			tl.set_cell(Vector2i(arr[k], arr[k + 1]), src, Vector2i(arr[k + 2], 0))
 
 
 func _unload(key: Vector2i) -> void:

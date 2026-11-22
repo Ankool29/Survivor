@@ -37,6 +37,7 @@ class ChunkData:
 	## Type de sol (Tiles.G_*) des cases x0-1..x0+31 / y0-1..y0+31, avant les
 	## bâtiments : sert aux transitions de la grille double. Index (ly+1)*33+(lx+1).
 	var kinds := PackedByteArray()
+	var dual: Array = []               ## tuiles de transition précalculées (ChunkManager)
 	var buildings: Array = []          # {rect: Rect2i (cases monde), kind: String, name: String}
 
 
@@ -142,8 +143,15 @@ func generate(cx: int, cy: int) -> ChunkData:
 				_cell(scratch, 0, 0, x0 + lx, y0 + ly)
 				g = scratch.ground[0] / Tiles.VARIANTS
 			c.kinds[(ly + 1) * K + lx + 1] = g
-	# 2. bâtiments (contenus dans le morceau)
+	# 2. bâtiments (contenus dans le morceau, à une case des bords)
 	_place_buildings(c, x0, y0)
+	for b in c.buildings:
+		var r: Rect2i = b["rect"]
+		for wy in range(r.position.y, r.end.y):
+			for wx in range(r.position.x, r.end.x):
+				var lx := wx - x0
+				var ly := wy - y0
+				c.kinds[(ly + 1) * K + lx + 1] = c.ground[ly * CHUNK + lx] / Tiles.VARIANTS
 	# 3. ombrage du relief (1 case de marge pour un raccord sans couture)
 	c.shade = _shade(x0, y0)
 	return c
@@ -306,7 +314,7 @@ func _water(c: ChunkData, lx: int, ly: int, x: int, y: int, t: int, v: int) -> v
 
 
 func _free(c: ChunkData, r: Rect2i, margin: int, occupied: PackedByteArray) -> bool:
-	if r.position.x < 0 or r.position.y < 0 or r.end.x > CHUNK or r.end.y > CHUNK:
+	if r.position.x < 1 or r.position.y < 1 or r.end.x > CHUNK - 1 or r.end.y > CHUNK - 1:
 		return false
 	for ly in range(r.position.y - margin, r.end.y + margin):
 		for lx in range(r.position.x - margin, r.end.x + margin):
@@ -337,8 +345,8 @@ func _place_buildings(c: ChunkData, x0: int, y0: int) -> void:
 			size = Vector2i(int(side * 1.2), int(side))
 		var px := int(p["x"]) - x0 - size.x / 2
 		var py := int(p["y"]) - y0 - size.y / 2
-		px = clampi(px, 0, CHUNK - size.x)
-		py = clampi(py, 0, CHUNK - size.y)
+		px = clampi(px, 1, CHUNK - 1 - size.x)
+		py = clampi(py, 1, CHUNK - 1 - size.y)
 		var placed := false
 		for attempt in 9:
 			var r := Rect2i(px + (attempt % 3 - 1) * 3, py + (attempt / 3 - 1) * 3, size.x, size.y)
@@ -412,6 +420,7 @@ func _build(c: ChunkData, r: Rect2i, occupied: PackedByteArray, special: bool, k
 				if door:
 					c.flags[i] = F_INDOOR
 				else:
+					_put(c, lx, ly, Tiles.G_MUR, v)
 					_deco(c, lx, ly, Tiles.D_MUR_BRISE if rnd(wx, wy, 33) < ruin * 0.5 else Tiles.D_MUR, F_BLOCK)
 			else:
 				c.flags[i] = F_INDOOR
@@ -427,6 +436,7 @@ func _build(c: ChunkData, r: Rect2i, occupied: PackedByteArray, special: bool, k
 	var di := (r.end.y - 1) * CHUNK + door_x
 	c.decor[di] = -1
 	c.flags[di] = F_INDOOR
+	c.ground[di] = (Tiles.G_CARRELAGE if special else Tiles.G_SOL_BATIMENT) * Tiles.VARIANTS
 	c.buildings.append({
 		"rect": Rect2i(r.position + Vector2i(x0, y0), r.size),
 		"kind": kind, "name": label,

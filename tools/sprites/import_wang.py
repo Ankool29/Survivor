@@ -42,8 +42,30 @@ def tiles_by_mask(data):
     return out
 
 
+STATE = {"lower": 0, "upper": 1, "transition": 2}
+
+
+def import_cliff(name, data, grass):
+    """Jeu en relief (mur, falaise) : coins à 3 états. Planche de N tuiles en ligne
+    + <nom>.json : code (NO*27 + NE*9 + SO*3 + SE) -> index de tuile."""
+    tiles = data["tileset"]["tiles"]
+    size = decode(tiles[0]["image"]).shape[0]
+    sheet = np.zeros((size, size * len(tiles), 4), dtype=np.uint8)
+    lookup = {}
+    for i, t in enumerate(tiles):
+        im = decode(t["image"])
+        if grass is not None:
+            im[(im == grass).all(axis=2)] = 0
+        sheet[:, i * size:(i + 1) * size] = im
+        c = t["corners"]
+        code = STATE[c["NW"]] * 27 + STATE[c["NE"]] * 9 + STATE[c["SW"]] * 3 + STATE[c["SE"]]
+        lookup.setdefault(str(code), i)
+    Image.fromarray(sheet).save(os.path.join(OUT, "wang", name + ".png"))
+    json.dump({"tiles": len(tiles), "lookup": lookup}, open(os.path.join(OUT, "wang", name + ".json"), "w"))
+
+
 def main():
-    files = sorted(glob.glob(os.path.join(RAW, "wang_*.json")))
+    files = sorted(glob.glob(os.path.join(RAW, "wang_*.json")), key=lambda f: "mur" in f)
     if not files:
         sys.exit("Aucun fichier dans " + RAW)
     os.makedirs(os.path.join(OUT, "wang"), exist_ok=True)
@@ -51,7 +73,12 @@ def main():
     report = []
     for path in files:
         name = os.path.basename(path)[5:-5]
-        tiles = tiles_by_mask(json.load(open(path)))
+        data = json.load(open(path))
+        if any("transition" in t["corners"].values() for t in data["tileset"]["tiles"]):
+            import_cliff(name, data, grass)
+            report.append("%s : mur en relief, %d tuiles" % (name, len(data["tileset"]["tiles"])))
+            continue
+        tiles = tiles_by_mask(data)
         if len(tiles) != 16:
             print("  %s : %d tuiles au lieu de 16, ignoré" % (name, len(tiles)))
             continue
@@ -68,6 +95,10 @@ def main():
             sheet[:, m * size:(m + 1) * size] = t
         Image.fromarray(sheet).save(os.path.join(OUT, "wang", name + ".png"))
         report.append("%s : herbe identique à %.0f %%" % (name, same * 100))
+    # Ponts : même dalle que le béton, dessinée au-dessus de l'eau
+    beton = os.path.join(OUT, "wang", "beton.png")
+    if os.path.exists(beton):
+        Image.open(beton).save(os.path.join(OUT, "wang", "pont.png"))
     print("\n".join(report))
 
 

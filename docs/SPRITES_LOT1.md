@@ -50,7 +50,7 @@ pas d'objets d'inventaire, pas d'intérieurs détaillés : ce sera pour les lots
 | 11 transitions de sol | intégrées | friche, lande, feuillus, résineux, marais, chemin, sable, béton, asphalte (2e version), eau (2e version), mer |
 | Joueur | intégré | 4 directions, repos (4 images), marche (6), course (6) ; 13 générations |
 | Arbres et végétation, objets divers | intégrés | 32 objets en 2 planches de 16 (outil « objet 1 direction ») ; 25 générations |
-| Murs de ruines, sols de bâtiments, ballast, ponts | à faire | |
+| Murs de ruines, sols de bâtiments, ballast, ponts | intégrés | mur en relief (25 tuiles, coins à 3 états : herbe, dessus, face), sol de ruine, ballast ; ponts = dalle de béton ; 45 générations |
 
 Les réponses brutes de PixelLab sont gardées dans `tools/sprites/raw/` ; `tools/sprites/import_wang.py`
 les convertit en planches pour le jeu (`game/assets/tiles/`).
