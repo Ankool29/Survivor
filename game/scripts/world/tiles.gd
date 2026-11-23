@@ -70,6 +70,9 @@ const D_LIERRE := 28
 const D_COLLET := 29
 const D_COLLET_PRIS := 30
 const D_NASSE := 31
+const D_SECHOIR := 32
+const D_SECHOIR_PEAU := 33
+const D_SECHOIR_TANNE := 34
 const DECOR_COLS := 8
 
 ## Objets de décor PixelLab (tailles variées) : res://assets/decor/<nom>.png,
@@ -105,6 +108,9 @@ const DECOR_VARIANTS := {
 	D_COLLET: ["collet"],
 	D_COLLET_PRIS: ["collet_pris"],
 	D_NASSE: ["nasse"],
+	D_SECHOIR: ["sechoir"],
+	D_SECHOIR_PEAU: ["sechoir_peau"],
+	D_SECHOIR_TANNE: ["sechoir_tannage"],
 	D_LIERRE: ["lierre_a", "lierre_b", "lierre_c", "orties", "fougere", "mousse"],
 }
 const DECOR_META := "res://assets/decor/decor.json"

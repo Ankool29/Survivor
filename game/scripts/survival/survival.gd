@@ -29,8 +29,10 @@ var chaleur := 100.0
 var sante := 100.0
 var mouille := 0.0               ## 0 sec, 1 trempé
 var malade := 0.0                ## minutes de maladie restantes
-var porte := ""                  ## vêtement porté
-var sac := false                 ## sac à dos équipé
+var porte := ""                  ## ancien vêtement porté (sauvegardes d'avant l'étape 4)
+var sac := false                 ## ancien sac équipé (idem)
+var equip: Equipment             ## vêtements portés (étape 4)
+var load_ratio := 0.0            ## charge portée / charge supportée
 var torche := 0.0                ## minutes de torche restantes
 var saigne := 0.0                ## minutes de saignement restantes (un bandage l'arrête)
 var _wind := Vector2.RIGHT
@@ -49,6 +51,7 @@ var running := false
 var indoor := false
 var near_fire := false
 var sheltered := false
+var wading := false              ## dans l'eau (gué)
 
 var _warned := {}
 
@@ -102,8 +105,10 @@ func outside_temp() -> float:
 
 
 func felt_temp() -> float:
-	var t := outside_temp() - 7.0 * mouille
-	t += float(Items.info(porte).get("chaleur", 0))
+	# mouillés, les vêtements perdent jusqu'aux deux tiers de leur chaleur
+	var t := outside_temp() - 4.0 * mouille
+	if equip:
+		t += equip.total("chaleur") * (1.0 - 0.66 * mouille)
 	if indoor or sheltered:
 		t += 4.0
 	if near_fire:
@@ -147,12 +152,21 @@ func tick(dt: float, speed := 1.0) -> void:
 	if sleeping:
 		fatigue = minf(100.0, fatigue + 100.0 / 7.0 * sleep_quality * h)
 	else:
-		fatigue = maxf(0.0, fatigue - 100.0 / 20.0 * h * (1.4 if running else 1.0))
+		var heavy := 1.0 + maxf(0.0, load_ratio - 1.0) * 1.5
+		fatigue = maxf(0.0, fatigue - 100.0 / 20.0 * h * (1.4 if running else 1.0) * heavy)
 	# Mouillé / séchage
-	if weather == "pluie" and not indoor and not sheltered:
-		mouille = minf(1.0, mouille + h * 1.5)
+	var imper := equip.impermeability() if equip else 0.0
+	if wading:
+		mouille = minf(1.0, mouille + h * 8.0 * (1.0 - 0.5 * imper))
+	elif weather == "pluie" and not indoor and not sheltered:
+		mouille = minf(1.0, mouille + h * 1.0 * (1.0 - imper))
 	else:
-		mouille = maxf(0.0, mouille - h * (2.0 if near_fire else 0.4))
+		var dry := 0.25
+		if near_fire:
+			dry = 2.0
+		elif indoor or sheltered:
+			dry = 0.5
+		mouille = maxf(0.0, mouille - h * dry)
 	# Chaleur
 	var ft := felt_temp()
 	if ft >= 10.0:

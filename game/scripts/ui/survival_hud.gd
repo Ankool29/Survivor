@@ -125,10 +125,12 @@ func _draw() -> void:
 	var extra: PackedStringArray = []
 	if surv.malade > 0.0:
 		extra.append("malade")
-	if surv.mouille > 0.3:
+	if surv.mouille > 0.7:
+		extra.append("trempé")
+	elif surv.mouille > 0.3:
 		extra.append("mouillé")
-	if surv.porte != "":
-		extra.append(Items.name_of(surv.porte).to_lower())
+	if surv.load_ratio > 1.0:
+		extra.append("trop chargé")
 	if surv.torche > 0.0:
 		extra.append("torche")
 	if surv.saigne > 0.0:

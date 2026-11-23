@@ -12,6 +12,9 @@ signal store_item(index: int, all: bool)
 signal take_item(index: int, all: bool)
 signal take_all
 signal craft(recipe: Dictionary)
+signal equip_item(index: int)
+signal unequip(slot: String)
+signal repair(slot: String, index: int)
 signal closed
 
 var inv: Inventory
@@ -25,6 +28,11 @@ var _actions: HBoxContainer
 var _sel_label: Label
 var _hint: Label
 var fire_check: Callable    ## renvoie vrai si un feu allumé est à portée
+var equip: Equipment
+var surv: Survival
+var repair_check: Callable  ## (id) -> vrai si on a de quoi réparer
+var _tab := "craft"         ## "craft" ou "equip"
+var _title: Label
 
 
 
@@ -47,10 +55,9 @@ func _ready() -> void:
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 6)
 	root.add_child(left)
-	var l := Label.new()
-	l.text = "Sac — toucher un objet pour le choisir"
-	l.add_theme_font_size_override("font_size", 16)
-	left.add_child(l)
+	_title = Label.new()
+	_title.add_theme_font_size_override("font_size", 16)
+	left.add_child(_title)
 	_grid = GridContainer.new()
 	_grid.columns = 6
 	_grid.add_theme_constant_override("h_separation", 6)
@@ -78,6 +85,11 @@ func _ready() -> void:
 	scroll.add_child(_right)
 
 
+func open_equipment() -> void:
+	_tab = "equip"
+	open()
+
+
 func open(with_container: Inventory = null, title := "") -> void:
 	container = with_container
 	container_title = title
@@ -101,7 +113,8 @@ func _btn(text: String, action: Callable) -> Button:
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(0, 46)
 	b.add_theme_font_size_override("font_size", 15)
-	b.pressed.connect(action)
+	if action.is_valid():
+		b.pressed.connect(action)
 	return b
 
 
@@ -110,14 +123,21 @@ func refresh() -> void:
 		return
 	# Sélection encore valable ?
 	var src: Inventory = inv if _sel_side == "sac" else container
-	if _sel >= 0 and (src == null or _sel >= src.slots.size() or src.slots[_sel].is_empty()):
+	if _sel_side == "equip":
+		if equip == null or equip.slots.get(_sel_slot, {}).is_empty():
+			_sel = -1
+			_sel_side = ""
+	elif _sel >= 0 and (src == null or _sel >= src.slots.size() or src.slots[_sel].is_empty()):
 		_sel = -1
 		_sel_side = ""
 	for ch in _grid.get_children():
 		ch.queue_free()
 	for i in inv.slots.size():
 		_grid.add_child(_slot_button(inv.slots[i], "sac", i))
-	_hint.text = "%d cases libres" % inv.free_slots()
+	var carried := inv.weight() + (equip.worn_weight() if equip else 0.0)
+	var cap := equip.capacity() if equip else 20.0
+	_title.text = "Sac — %d / %d cases · %.1f / %.0f kg" % [inv.slots.size() - inv.free_slots(), inv.slots.size(), carried, cap]
+	_hint.text = "Trop chargé : tu ralentis et te fatigues vite." if carried > cap else "Toucher un objet pour le choisir."
 	_build_actions()
 	for ch in _right.get_children():
 		ch.queue_free()
@@ -137,6 +157,25 @@ func refresh() -> void:
 		all.disabled = container.free_slots() == container.slots.size()
 		_right.add_child(all)
 		return
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	_right.add_child(tabs)
+	_right.move_child(tabs, 0)
+	for tb in [["craft", "Fabrication"], ["equip", "Équipement"]]:
+		var key: String = tb[0]
+		var b := _btn(tb[1], func():
+			_tab = key
+			if _sel_side == "equip":
+				_sel = -1
+				_sel_side = ""
+			refresh())
+		b.custom_minimum_size = Vector2(150, 42)
+		b.disabled = _tab == key
+		tabs.add_child(b)
+	if _tab == "equip" and equip != null:
+		t.queue_free()
+		_build_equipment()
+		return
 	t.text = "Fabrication"
 	var list := Recipes.LIST.duplicate()
 	list.sort_custom(func(a, b): return int(Recipes.can_make(a, inv)) > int(Recipes.can_make(b, inv)))
@@ -151,15 +190,71 @@ func refresh() -> void:
 		_right.add_child(b)
 
 
+func _build_equipment() -> void:
+	var imper := equip.impermeability()
+	var info := Label.new()
+	info.add_theme_font_size_override("font_size", 14)
+	info.text = "Chaleur +%d °C · pluie arrêtée %d %% · protection %d %% · bruit %+d %%" % [
+		roundi(equip.total("chaleur")), roundi(imper * 100.0), roundi(equip.protection() * 100.0), roundi(equip.total("bruit") * 100.0)]
+	if surv and surv.mouille > 0.05:
+		info.text += "\nMouillé à %d %% : tes vêtements tiennent moins chaud. Sèche-toi près d'un feu." % roundi(surv.mouille * 100.0)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_right.add_child(info)
+	for slot in Items.SLOTS:
+		var st: Dictionary = equip.slots[slot]
+		var b := _btn("", Callable())
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.expand_icon = false
+		if st.is_empty():
+			b.text = "%s : rien" % Items.SLOT_NAMES[slot]
+			b.modulate = Color(1, 1, 1, 0.55)
+		else:
+			var id := String(st["id"])
+			b.icon = Items.icon(id)
+			b.text = "%s : %s  (%d %%)" % [Items.SLOT_NAMES[slot], Items.name_of(id),
+				roundi(100.0 * float(st["usure"]) / float(Items.info(id).get("usure", 1)))]
+			var key: String = slot
+			b.pressed.connect(func():
+				if _sel_side == "equip" and _sel_slot == key:
+					_sel = -1
+					_sel_side = ""
+				else:
+					_sel = 0
+					_sel_side = "equip"
+					_sel_slot = key
+				refresh())
+			if _sel_side == "equip" and _sel_slot == slot:
+				b.modulate = Color(1.3, 1.25, 0.8)
+		_right.add_child(b)
+
+
+var _sel_slot := ""
+
+
 func _build_actions() -> void:
 	for ch in _actions.get_children():
 		ch.queue_free()
 	if _sel < 0:
 		_sel_label.text = ""
 		return
+	if _sel_side == "equip":
+		var st: Dictionary = equip.slots.get(_sel_slot, {})
+		if st.is_empty():
+			_sel_label.text = ""
+			return
+		var id := String(st["id"])
+		var slot := _sel_slot
+		_sel_label.text = Items.name_of(id) + " (porté)"
+		_actions.add_child(_btn("Enlever", func(): unequip.emit(slot)))
+		if int(st["usure"]) < int(Items.info(id).get("usure", 1)):
+			var rb := _btn("Réparer", func(): repair.emit(slot, -1))
+			rb.disabled = not (repair_check.is_valid() and repair_check.call(id))
+			_actions.add_child(rb)
+		return
 	var src: Inventory = inv if _sel_side == "sac" else container
 	var s: Dictionary = src.slots[_sel]
 	var id: String = s["id"]
+	var place := String(Items.info(id).get("emplacement", ""))
 	var n := int(s["n"])
 	_sel_label.text = Items.name_of(id) + ("  ×%d" % n if n > 1 else "")
 	var i := _sel
@@ -171,6 +266,10 @@ func _build_actions() -> void:
 	var use := String(Items.info(id).get("utiliser", ""))
 	if use != "" and container == null:
 		_actions.add_child(_btn(use, func(): use_item.emit(i)))
+	if place != "" and container == null and equip != null:
+		_actions.add_child(_btn("Mettre", func(): equip_item.emit(i)))
+		if s.has("usure") and int(s["usure"]) < int(Items.info(id).get("usure", 1)) and repair_check.is_valid() and repair_check.call(id):
+			_actions.add_child(_btn("Réparer", func(): repair.emit("", i)))
 	if container == null and Items.COOK.has(id):
 		if fire_check.is_valid() and fire_check.call():
 			_actions.add_child(_btn(Items.COOK[id][1], func(): cook_item.emit(i)))

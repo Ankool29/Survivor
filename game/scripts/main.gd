@@ -29,6 +29,9 @@ var inv: Inventory
 var mods: WorldMods
 var actions: Actions
 var fauna: Fauna
+var equip: Equipment
+var _wear_t := 0.0
+var _feet_m := 0.0
 var crouch_button: Button
 var _aim_line: Line2D
 var _hour_t := 0.0
@@ -106,8 +109,11 @@ func _start(s: int) -> void:
 	surv = Survival.new()
 	surv.message.connect(hud.show_message)
 	surv.died.connect(_on_died)
-	inv = Inventory.new(16)
+	inv = Inventory.new(12)
 	inv.changed.connect(func(): bag.refresh())
+	equip = Equipment.new()
+	equip.changed.connect(_apply_equipment)
+	surv.equip = equip
 	actions = Actions.new()
 	actions.world = world
 	actions.zone = zone
@@ -118,6 +124,8 @@ func _start(s: int) -> void:
 	hud.surv = surv
 	atmo.surv = surv
 	bag.inv = inv
+	bag.equip = equip
+	bag.surv = surv
 	inv.clock = surv.get_minutes
 	fauna.reset(s, mods, surv, player)
 	player.aiming = false
@@ -130,6 +138,9 @@ func _start(s: int) -> void:
 func new_game(s: int) -> void:
 	_start(s)
 	surv.start(s)
+	# habits de départ
+	for id in ["veste", "pantalon_travail", "chaussures_rando", "sac_courses"]:
+		equip.put(id, int(int(Items.info(id).get("usure", 100)) * 0.7))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = s
 	for attempt in 600:
@@ -157,7 +168,7 @@ func save_game() -> void:
 	var data := {"version": 1, "zone": zone.name, "seed": seed_value,
 		"x": player.position.x, "y": player.position.y,
 		"survie": surv.to_data(), "sac": inv.to_data(), "monde": mods.to_data(),
-		"faune": fauna.to_data()}
+		"faune": fauna.to_data(), "equipement": equip.to_data()}
 	var f := FileAccess.open(SAVE_FILE, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -175,7 +186,17 @@ func load_game() -> bool:
 	mods.from_data(data.get("monde", {}), surv.minutes)
 	inv.from_data(data.get("sac", []))
 	fauna.from_data(data.get("faune", {}))
-	inv.resize(24 if surv.sac else 16)
+	if data.has("equipement"):
+		equip.from_data(data["equipement"])
+	else:
+		# sauvegarde d'avant l'étape 4 : vêtement et sac de l'ancien système
+		if surv.porte != "" and inv.remove(surv.porte):
+			equip.put(surv.porte)
+		if surv.sac:
+			equip.put("sac")
+		surv.porte = ""
+		surv.sac = false
+	_apply_equipment()
 	player.position = Vector2(float(data["x"]), float(data["y"]))
 	world.ensure_cell(player.cell())
 	camera.reset_smoothing()
@@ -250,6 +271,11 @@ func _tick_survival(delta: float) -> void:
 	surv.indoor = world.flags_at(cell) & WorldGen.F_ROOF != 0
 	surv.near_fire = actions.near_fire(player.position).x >= 0
 	surv.sheltered = actions.near_structure(player.position, "abri").x >= 0
+	surv.wading = zone.is_water(cell.x, cell.y)
+	# charge : au-delà de ce que le sac supporte, on ralentit
+	var carried := inv.weight() + equip.worn_weight()
+	surv.load_ratio = carried / equip.capacity()
+	player.load_factor = clampf(1.0 - (surv.load_ratio - 1.0), 0.5, 1.0)
 	var speed := SLEEP_SPEED if surv.sleeping else 1.0
 	var before := surv.minutes
 	surv.tick(delta, speed)
@@ -262,7 +288,22 @@ func _tick_survival(delta: float) -> void:
 		_hour_t = 0.0
 		if inv.spoil(surv.minutes) > 0:
 			hud.show_message("De la nourriture s'est gâtée.")
-	surv.distance_m += player.position.distance_to(_last_pos) / Tiles.SIZE * zone.cell_m
+	var walked := player.position.distance_to(_last_pos) / Tiles.SIZE * zone.cell_m
+	surv.distance_m += walked
+	# usure des vêtements : un peu chaque 3 h, les chaussures en marchant
+	_feet_m += walked
+	_wear_t += surv.minutes - before
+	var torn := []
+	if _wear_t >= 180.0:
+		_wear_t = 0.0
+		torn.append_array(equip.wear_all(1))
+	if _feet_m >= 500.0:
+		_feet_m = 0.0
+		var t := equip.wear("pieds", 1)
+		if t != "":
+			torn.append(t)
+	for t in torn:
+		hud.show_message("%s est fichu, tu le jettes." % t)
 	_last_pos = player.position
 	if surv.sleeping:
 		var wake := surv.fatigue >= 99.5
@@ -316,8 +357,9 @@ func _action_label() -> String:
 	var c := fauna.carcass_near(player.position)
 	if c:
 		return "Dépecer le " + String(c.sp["nom"]).split(" ")[0]
-	if not fauna.pickup_near(player.position).is_empty():
-		return "Ramasser la flèche"
+	var pk := fauna.pickup_near(player.position)
+	if not pk.is_empty():
+		return "Ramasser : " + Items.name_of(pk["id"]).to_lower()
 	return actions.label_for(_target, player.position)
 
 
@@ -365,11 +407,20 @@ func _fauna_action(label: String) -> bool:
 		fauna.remove_carcass(c)
 		hud.show_message(actions._give(got, "La carcasse était trop vieille." if old else "")["msg"])
 		return true
-	if label == "Ramasser la flèche":
+	if label.begins_with("Ramasser : "):
 		var pk := fauna.pickup_near(player.position)
-		if not pk.is_empty() and inv.add("fleche") == 0:
-			fauna.take_pickup(pk)
-			player.play_action("ramasser")
+		if pk.is_empty():
+			return true
+		var st: Dictionary = pk.duplicate()
+		st.erase("node")
+		st.erase("x")
+		st.erase("y")
+		var left := inv.add_stack(st)
+		fauna.take_pickup(pk)
+		if not left.is_empty():
+			fauna.drop_item(Vector2(float(pk["x"]), float(pk["y"])), left)
+			hud.show_message("Sac plein.")
+		player.play_action("ramasser")
 		return true
 	return false
 
@@ -379,8 +430,13 @@ func _on_bitten(dmg: float, who: String) -> void:
 		return
 	if surv.sleeping:
 		_wake("Tu te réveilles : un %s t'attaque !" % who)
-	surv.hurt(dmg * randf_range(0.8, 1.2), "un " + who)
-	if randf() < 0.35:
+	var prot := equip.protection()
+	surv.hurt(dmg * randf_range(0.8, 1.2) * (1.0 - prot), "un " + who)
+	var hit_slot: String = ["torse", "jambes", "mains", "torse"][randi() % 4]
+	var torn := equip.wear(hit_slot, 3)
+	if torn != "":
+		hud.show_message("%s est déchiré." % torn)
+	if randf() < 0.35 * (1.0 - prot * 1.5):
 		surv.saigne = maxf(surv.saigne, 90.0)
 		hud.show_message("Le %s te mord : tu saignes !" % who)
 	else:
@@ -475,6 +531,8 @@ func _on_action() -> void:
 		return
 	if r.has("carcass"):
 		fauna.add_carcass(r["carcass"], (Vector2(r["at"]) + Vector2(0.5, 0.7)) * Tiles.SIZE)
+	if r.has("spend"):
+		_spend(float(r["spend"]))
 	hud.show_message(r.get("msg", ""))
 	_action_timer = 0.0
 
@@ -573,15 +631,6 @@ func _on_use_item(index: int) -> void:
 				inv.add(it["rend"])
 			var m := surv.consume(id)
 			hud.show_message(m if m != "" else "%s : fait." % Items.name_of(id))
-		"Porter":
-			surv.porte = "" if surv.porte == id else id
-			hud.show_message(("Tu portes : " + Items.name_of(id)) if surv.porte == id else "Tu enlèves ton vêtement.")
-		"Équiper":
-			if not surv.sac:
-				inv.remove(id)
-				surv.sac = true
-				inv.resize(24)
-				hud.show_message("Sac à dos équipé : 8 cases de plus.")
 		"Allumer":
 			inv.remove(id)
 			surv.torche += 60.0
@@ -596,10 +645,15 @@ func _on_drop_item(index: int, all: bool) -> void:
 	if s.is_empty():
 		return
 	var n := int(s["n"]) if all else 1
-	if surv.porte == s["id"] and inv.count(s["id"]) <= n:
-		surv.porte = ""
-	inv.remove(s["id"], n)
-	hud.show_message("Tu jettes : %s%s." % [Items.name_of(s["id"]).to_lower(), " ×%d" % n if n > 1 else ""])
+	var dropped: Dictionary = s.duplicate()
+	dropped["n"] = n
+	if n >= int(s["n"]):
+		inv.take_slot(index)
+	else:
+		inv.remove(s["id"], n)
+		dropped.erase("usure")
+	fauna.drop_item(player.position + player.facing * 10.0, dropped)
+	hud.show_message("Tu poses par terre : %s%s." % [Items.name_of(s["id"]).to_lower(), " ×%d" % n if n > 1 else ""])
 	bag.refresh()
 
 
@@ -608,8 +662,15 @@ func _on_store_item(index: int, all: bool) -> void:
 	if s.is_empty() or _cont_inv == null:
 		return
 	var n := int(s["n"]) if all else 1
-	var left := _cont_inv.add(s["id"], n)
-	inv.remove(s["id"], n - left)
+	var left := 0
+	if s.has("usure") or s.has("exp"):
+		if _cont_inv.add_stack(s).is_empty():
+			inv.take_slot(index)
+		else:
+			left = n
+	else:
+		left = _cont_inv.add(s["id"], n)
+		inv.remove(s["id"], n - left)
 	if left > 0:
 		hud.show_message("Plus de place.")
 	_store_container()
@@ -623,8 +684,15 @@ func _on_take_item(index: int, all: bool) -> void:
 	if s.is_empty():
 		return
 	var n := int(s["n"]) if all else 1
-	var left := inv.add(s["id"], n)
-	_cont_inv.remove(s["id"], n - left)
+	var left := 0
+	if s.has("usure") or s.has("exp"):
+		if inv.add_stack(s).is_empty():
+			_cont_inv.take_slot(index)
+		else:
+			left = n
+	else:
+		left = inv.add(s["id"], n)
+		_cont_inv.remove(s["id"], n - left)
 	if left > 0:
 		hud.show_message("Sac plein.")
 	_store_container()
@@ -640,8 +708,15 @@ func _on_take_all() -> void:
 		if s.is_empty():
 			continue
 		var n := int(s["n"])
-		var left := inv.add(s["id"], n)
-		_cont_inv.remove(s["id"], n - left)
+		var left := 0
+		if s.has("usure") or s.has("exp"):
+			if inv.add_stack(s).is_empty():
+				_cont_inv.take_slot(i)
+			else:
+				left = n
+		else:
+			left = inv.add(s["id"], n)
+			_cont_inv.remove(s["id"], n - left)
 		full = full or left > 0
 	if full:
 		hud.show_message("Sac plein.")
@@ -658,6 +733,10 @@ func _on_craft(r: Dictionary) -> void:
 			return
 	for id in r["ing"]:
 		inv.remove(id, int(r["ing"][id]))
+	if "aiguille" in r.get("outils", []):
+		var needle := "aiguille" if inv.has("aiguille") else "necessaire"
+		if not inv.wear(needle):
+			hud.show_message("%s est usé jusqu'au bout." % Items.name_of(needle))
 	if r.has("pose"):
 		hud.show_message("%s posé devant toi." % r["nom"])
 		bag.hide_panel()
@@ -786,6 +865,10 @@ func _build_ui() -> void:
 	ui.add_child(bag)
 	bag.use_item.connect(_on_use_item)
 	bag.cook_item.connect(_on_cook_item)
+	bag.equip_item.connect(_on_equip_item)
+	bag.unequip.connect(_on_unequip)
+	bag.repair.connect(_on_repair)
+	bag.repair_check = func(id): return _repair_material(id) != ""
 	bag.smoke_item.connect(_on_smoke_item)
 	bag.fire_check = func(): return actions.near_fire(player.position, 3).x >= 0
 	bag.drop_item.connect(_on_drop_item)
@@ -856,3 +939,84 @@ func _button(text: String, action: Callable) -> Button:
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(action)
 	return b
+
+
+# --- Équipement (étape 4) ------------------------------------------------------------
+
+## Le sac porté fixe le nombre de cases ; le torse, l'apparence ; le carquois, les flèches.
+func _apply_equipment() -> void:
+	if equip == null or inv == null:
+		return
+	var n := equip.bag_slots()
+	if inv.slots.size() < n:
+		inv.resize(n)
+	elif inv.slots.size() > n:
+		for st in inv.shrink(n):
+			fauna.drop_item(player.position + Vector2(randf_range(-12, 12), randf_range(-4, 8)), st)
+			hud.show_message("Plus de place : des objets tombent par terre.")
+	inv.pile_bonus = {"fleche": 60} if equip.item("ceinture") == "carquois" else {}
+	player.set_outfit(equip.outfit())
+	bag.refresh()
+
+
+func _on_equip_item(index: int) -> void:
+	var s: Dictionary = inv.slots[index]
+	if s.is_empty():
+		return
+	var id := String(s["id"])
+	inv.take_slot(index)
+	var old := equip.put(id, int(s.get("usure", -1)))
+	if not old.is_empty():
+		var back := {"id": old["id"], "n": 1, "usure": old["usure"]}
+		if not inv.add_stack(back).is_empty():
+			fauna.drop_item(player.position, back)
+			hud.show_message("Pas de place dans le sac : %s posé par terre." % Items.name_of(old["id"]).to_lower())
+	hud.show_message("Tu mets : %s." % Items.name_of(id).to_lower())
+
+
+func _on_unequip(slot: String) -> void:
+	var old := equip.take(slot)
+	if old.is_empty():
+		return
+	var back := {"id": old["id"], "n": 1, "usure": old["usure"]}
+	if not inv.add_stack(back).is_empty():
+		fauna.drop_item(player.position, back)
+		hud.show_message("Pas de place dans le sac : %s posé par terre." % Items.name_of(old["id"]).to_lower())
+
+
+## Matière disponible pour réparer cet objet ("" si rien ou pas d'aiguille).
+func _repair_material(id: String) -> String:
+	if not Recipes.has_tool(inv, "aiguille") or not inv.has("fil"):
+		return ""
+	match String(Items.info(id).get("reparer", "tissu")):
+		"tissu":
+			for m in ["tissu", "cuir"]:
+				if inv.has(m):
+					return m
+		"cuir":
+			for m in ["cuir", "tissu"]:
+				if inv.has(m):
+					return m
+		"fourrure":
+			for m in ["fourrure_lapin", "fourrure_renard", "cuir"]:
+				if inv.has(m):
+					return m
+	return ""
+
+
+func _on_repair(slot: String, index: int) -> void:
+	var id := equip.item(slot) if slot != "" else String(inv.slots[index].get("id", ""))
+	var m := _repair_material(id)
+	if id == "" or m == "":
+		return
+	inv.remove(m)
+	inv.remove("fil")
+	var needle := "aiguille" if inv.has("aiguille") else "necessaire"
+	inv.wear(needle)
+	if slot != "":
+		equip.repair(slot)
+	else:
+		inv.slots[index]["usure"] = int(Items.info(id).get("usure", 100))
+	_spend(30.0)
+	hud.show_message("%s : réparé." % Items.name_of(id))
+	bag.refresh()

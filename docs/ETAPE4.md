@@ -2,7 +2,17 @@
 
 Objectif : rendre l'hiver survivable et donner un usage aux peaux. Le joueur s'habille avec ce qu'il trouve, puis fabrique ses propres vêtements de peau et de fourrure. Chaque pièce compte contre le froid, la pluie et les blessures.
 
-Statut : **proposition, à valider**. Les chiffres sont des valeurs de départ, à régler en jouant.
+Statut : **validé et intégré**. Les chiffres sont des valeurs de départ, à régler en jouant.
+
+Choix retenus : le personnage change d'apparence selon le vêtement de torse (4 tenues : civile, ciré, cuir, fourrure) ; la charge se compte en cases et en poids.
+
+Écarts avec la proposition :
+- 7 emplacements : le carquois a le sien (ceinture) ; porté, il fait tenir 60 flèches dans une seule case ;
+- départ habillé : veste de travail, pantalon de travail, chaussures de rando et sac de courses, déjà usés ;
+- tendre une peau se fait d'un coup (grattage compris) sur le cadre de séchage ; les cendres se ramassent dans un feu éteint (une poignée par heure de feu) ;
+- sans sac : 12 cases et 20 kg ; au-delà de la charge, on ralentit (jusqu'à moitié moins vite) et on se fatigue plus ; très chargé, on ne peut plus courir ;
+- « Jeter » pose désormais l'objet par terre, où on peut le reprendre ;
+- le ciré a une capuche : il protège aussi la tête de la pluie ; des gants évitent les égratignures des ronces.
 
 ## 1. L'équipement porté
 
@@ -71,8 +81,3 @@ Comme demandé, les animaux deviennent plus craintifs et plus durs à chasser : 
 - Environ 35 icônes (vêtements trouvés et fabriqués, cuir, fourrures, aiguille, grattoir, nécessaire de couture) en une planche de 64.
 - Cadre de séchage, vide et avec une peau, en décor.
 - Estimation : **une quinzaine de générations** ; on resterait vers 455 sur 2 000.
-
-## 9. Questions ouvertes
-
-1. Les vêtements changent-ils l'apparence du personnage plus tard (au moins 2 ou 3 tenues : civil, ciré, fourrure), au prix d'environ 60 générations par tenue ?
-2. Faut-il un poids en plus des cases (porter lourd ralentit et fatigue), ou seulement le nombre de cases ?

@@ -259,6 +259,21 @@
   "h": 80,
   "foot": 76
  },
+ "sechoir": {
+  "w": 64,
+  "h": 64,
+  "foot": 58
+ },
+ "sechoir_peau": {
+  "w": 64,
+  "h": 64,
+  "foot": 58
+ },
+ "sechoir_tannage": {
+  "w": 64,
+  "h": 64,
+  "foot": 58
+ },
  "souche": {
   "w": 64,
   "h": 64,

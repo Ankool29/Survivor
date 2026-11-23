@@ -24,15 +24,35 @@ var crouch := false               ## accroupi : lent et discret
 var aiming := false               ## arc bandé : très lent
 var _rest_offset := Vector2.ZERO
 
-const SHEET := "res://assets/characters/joueur.png"
-const SHEET_META := "res://assets/characters/joueur.json"
+var load_factor := 1.0             ## ralenti par la charge (1 = normal)
+var outfit := "civil"
+var _frames_cache := {}
 
 
 func _ready() -> void:
-	if not ResourceLoader.exists(SHEET) or not FileAccess.file_exists(SHEET_META):
+	var frames := _frames_for("civil")
+	if frames == null:
 		return
-	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SHEET_META))
-	var tex: Texture2D = load(SHEET)
+	_sprite = AnimatedSprite2D.new()
+	_sprite.sprite_frames = frames
+	_sprite.centered = false
+	_sprite.position = _rest_offset
+	add_child(_sprite)
+	_sprite.play("repos_south")
+	_sprite.animation_finished.connect(func():
+		if _action != "dormir":
+			_action = "")
+
+
+## Planche d'animations d'une tenue : joueur.png (civil) ou joueur_<tenue>.png.
+func _frames_for(t: String) -> SpriteFrames:
+	if _frames_cache.has(t):
+		return _frames_cache[t]
+	var base := "res://assets/characters/joueur" + ("" if t == "civil" else "_" + t)
+	if not ResourceLoader.exists(base + ".png") or not FileAccess.file_exists(base + ".json"):
+		return null if t == "civil" else _frames_for("civil")
+	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(base + ".json"))
+	var tex: Texture2D = load(base + ".png")
 	var fw := int(meta["frame_w"])
 	var fh := int(meta["frame_h"])
 	var frames := SpriteFrames.new()
@@ -49,16 +69,28 @@ func _ready() -> void:
 			at.atlas = tex
 			at.region = Rect2(i * fw, int(a["row"]) * fh, fw, fh)
 			frames.add_frame(name, at)
-	_sprite = AnimatedSprite2D.new()
-	_sprite.sprite_frames = frames
-	_sprite.centered = false
-	_sprite.position = Vector2(-fw / 2.0, -float(meta["feet_y"]) - 1.0)
-	_rest_offset = _sprite.position
-	add_child(_sprite)
-	_sprite.play("repos_south")
-	_sprite.animation_finished.connect(func():
-		if _action != "dormir":
-			_action = "")
+	if t == "civil":
+		_rest_offset = Vector2(-fw / 2.0, -float(meta["feet_y"]) - 1.0)
+	_frames_cache[t] = frames
+	return frames
+
+
+## Change l'apparence selon le vêtement de torse (civil, cire, cuir, fourrure).
+func set_outfit(t: String) -> void:
+	if t == outfit or _sprite == null:
+		return
+	var f := _frames_for(t)
+	if f == null:
+		return
+	outfit = t
+	var anim := _sprite.animation
+	var fr := _sprite.frame
+	_sprite.sprite_frames = f
+	if f.has_animation(anim):
+		_sprite.play(anim)
+		_sprite.frame = mini(fr, f.get_frame_count(anim) - 1)
+		if sleeping:
+			_sprite.pause()
 
 
 ## Joue une animation ponctuelle (si elle existe) : ramasser, frapper, boire, dormir.
@@ -134,7 +166,7 @@ func _process(delta: float) -> void:
 	if keys.length() > 0.1:
 		dir = keys
 	var running := run or Input.is_action_pressed("run")
-	_running_now = running and not crouch
+	_running_now = running and not crouch and load_factor > 0.7
 	moving = dir.length() > 0.1
 	if moving:
 		if dir.length() > 1.0:
@@ -145,6 +177,7 @@ func _process(delta: float) -> void:
 			speed *= 0.45
 		if aiming:
 			speed *= 0.3
+		speed *= load_factor
 		if world.flags_at(cell()) & WorldGen.F_SLOW:
 			speed *= SLOW_FACTOR
 		var step := dir * speed * delta

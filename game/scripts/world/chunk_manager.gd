@@ -488,7 +488,7 @@ func set_decor(cell: Vector2i, d: int, flag := WorldGen.F_TRUNK) -> void:
 
 
 const STRUCT_DECOR := {"feu": Tiles.D_FEU_ETEINT, "abri": Tiles.D_ABRI, "coffre": Tiles.D_COFFRE,
-	"collet": Tiles.D_COLLET, "nasse": Tiles.D_NASSE}
+	"collet": Tiles.D_COLLET, "nasse": Tiles.D_NASSE, "sechoir": Tiles.D_SECHOIR}
 
 
 func structure_decor(st: Dictionary) -> int:
@@ -496,6 +496,8 @@ func structure_decor(st: Dictionary) -> int:
 		return Tiles.D_FEU_ALLUME if float(st.get("feu", 0)) > 0.0 else Tiles.D_FEU_ETEINT
 	if st.get("type", "") == "collet" and st.get("pris", "") != "":
 		return Tiles.D_COLLET_PRIS
+	if st.get("type", "") == "sechoir":
+		return {"sechage": Tiles.D_SECHOIR_PEAU, "tannage": Tiles.D_SECHOIR_TANNE}.get(String(st.get("etat", "")), Tiles.D_SECHOIR)
 	return STRUCT_DECOR.get(st.get("type", ""), -1)
 
 

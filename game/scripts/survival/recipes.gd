@@ -22,7 +22,35 @@ const LIST := [
 	{"id": "ligne", "nom": "Ligne de pêche (hameçon en os)", "ing": {"corde": 1, "os": 1}, "outils": ["couteau"]},
 	{"id": "collet", "nom": "Collet", "ing": {"corde": 1, "branche": 1}, "pose": "collet"},
 	{"id": "nasse", "nom": "Nasse", "ing": {"branche": 4, "corde": 2}, "pose": "nasse"},
+	# Étape 4 : peaux et couture
+	{"id": "sechoir", "nom": "Cadre de séchage", "ing": {"branche": 4, "corde": 1}, "pose": "sechoir"},
+	{"id": "grattoir", "nom": "Grattoir en os", "ing": {"os": 1}, "outils": ["couteau"]},
+	{"id": "aiguille", "nom": "Aiguille en os", "ing": {"os": 1}, "outils": ["couteau"]},
+	{"id": "fil", "n": 4, "nom": "4 fils de tendon", "ing": {"tendon": 1}},
+	{"id": "fil", "n": 2, "nom": "2 fils de fibres", "ing": {"fibre": 3}},
+	{"id": "bonnet_fourrure", "nom": "Bonnet de fourrure", "ing": {"fourrure_lapin": 2, "fil": 1}, "outils": ["aiguille"]},
+	{"id": "moufles", "nom": "Moufles de fourrure", "ing": {"fourrure_lapin": 2, "fil": 1}, "outils": ["aiguille"]},
+	{"id": "gilet_peau", "nom": "Gilet de peau", "ing": {"cuir": 2, "fil": 2}, "outils": ["aiguille"]},
+	{"id": "pantalon_peau", "nom": "Pantalon de peau", "ing": {"cuir": 2, "fil": 2}, "outils": ["aiguille"]},
+	{"id": "manteau_fourrure", "nom": "Manteau de fourrure (renard)", "ing": {"fourrure_renard": 2, "cuir": 1, "fil": 3}, "outils": ["aiguille"]},
+	{"id": "manteau_fourrure", "nom": "Manteau de fourrure (loup)", "ing": {"fourrure_loup": 1, "cuir": 1, "fil": 3}, "outils": ["aiguille"]},
+	{"id": "mocassins", "nom": "Mocassins", "ing": {"cuir": 1, "fil": 1}, "outils": ["aiguille"]},
+	{"id": "bottes_fourrees", "nom": "Bottes fourrées", "ing": {"cuir": 1, "fourrure_lapin": 1, "fil": 2}, "outils": ["aiguille"]},
+	{"id": "sac_cuir", "nom": "Sac en cuir", "ing": {"cuir": 3, "corde": 2, "fil": 2}, "outils": ["aiguille"]},
+	{"id": "carquois", "nom": "Carquois", "ing": {"cuir": 1, "fil": 1}, "outils": ["aiguille"]},
 ]
+
+## Outils qui peuvent en remplacer un autre.
+const TOOL_ALIASES := {"aiguille": ["necessaire"], "couteau": []}
+
+
+static func has_tool(inv: Inventory, t: String) -> bool:
+	if inv.has(t):
+		return true
+	for a in TOOL_ALIASES.get(t, []):
+		if inv.has(a):
+			return true
+	return false
 
 
 static func can_make(r: Dictionary, inv: Inventory) -> bool:
@@ -30,7 +58,7 @@ static func can_make(r: Dictionary, inv: Inventory) -> bool:
 		if not inv.has(id, int(r["ing"][id])):
 			return false
 	for t in r.get("outils", []):
-		if not inv.has(t):
+		if not has_tool(inv, t):
 			return false
 	return true
 

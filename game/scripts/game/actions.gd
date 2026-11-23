@@ -79,7 +79,10 @@ func label_for(t: Dictionary, pos: Vector2) -> String:
 		if d in Loot.TABLE_OF_DECOR:
 			return "Ouvrir" if mods.is_searched(cell) else "Fouiller"
 		match d:
-			Tiles.D_FEU_ETEINT: return "Allumer le feu"
+			Tiles.D_FEU_ETEINT:
+				return "Ramasser des cendres" if int(mods.structure_at(cell).get("cendres", 0)) > 0 else "Allumer le feu"
+			Tiles.D_SECHOIR, Tiles.D_SECHOIR_PEAU, Tiles.D_SECHOIR_TANNE:
+				return _drying_label(mods.structure_at(cell))
 			Tiles.D_FEU_ALLUME: return "Entretenir le feu"
 			Tiles.D_ABRI: return "Dormir"
 			Tiles.D_COFFRE: return "Ouvrir le coffre"
@@ -154,6 +157,10 @@ func run(t: Dictionary, pos: Vector2) -> Dictionary:
 				var loot := Loot.roll(Loot.TABLE_OF_DECOR[d], cell, seed_value)
 				for id in loot:
 					content.add(id, int(loot[id]))
+				# vêtements et sacs trouvés : souvent usés
+				for st in content.slots:
+					if st.has("usure") and Items.info(st["id"]).has("emplacement"):
+						st["usure"] = maxi(1, int(float(st["usure"]) * randf_range(0.35, 0.9)))
 				mods.mark_searched(cell, content.to_data())
 			return {"container": cell, "title": TITLES.get(Tiles.decor_name(d, cell), "Meuble")}
 		"Ramasser des branches":
@@ -175,6 +182,10 @@ func run(t: Dictionary, pos: Vector2) -> Dictionary:
 			mods.harvest(cell, surv.minutes, 2.0)
 			if inv.has("couteau"):
 				inv.wear("couteau")
+			elif surv.equip and surv.equip.item("mains") != "":
+				var torn := surv.equip.wear("mains", 2)
+				if torn != "":
+					msg = "Tes gants se déchirent dans les ronces."
 			else:
 				surv.hurt(4.0, "les ronces")
 				msg = "Les ronces t'égratignent."
@@ -182,7 +193,10 @@ func run(t: Dictionary, pos: Vector2) -> Dictionary:
 			got = {"fibre": 2 + randi() % 2}
 			mods.harvest(cell, surv.minutes)
 			if d == Tiles.D_RONCES and not inv.has("couteau"):
-				surv.hurt(3.0, "les ronces")
+				if surv.equip and surv.equip.item("mains") != "":
+					surv.equip.wear("mains", 1)
+				else:
+					surv.hurt(3.0, "les ronces")
 		"Ramasser des pierres":
 			got = {"pierre": 2}
 			if randf() < 0.5:
@@ -197,6 +211,12 @@ func run(t: Dictionary, pos: Vector2) -> Dictionary:
 			mods.harvest(cell, surv.minutes)
 		"Allumer le feu", "Entretenir le feu":
 			return fire(cell)
+		"Ramasser des cendres":
+			var st: Dictionary = mods.structures.get(WorldMods.key(cell), {})
+			got = {"cendres": int(st.get("cendres", 0))}
+			st["cendres"] = 0
+		"Tendre une peau", "Voir la peau", "Tanner la peau", "Décrocher le cuir", "Décrocher la fourrure":
+			return _drying(label, cell)
 		"Dormir":
 			return {"sleep": "abri"}
 		"Ouvrir le coffre":
@@ -252,6 +272,12 @@ func burn(minutes_passed: float) -> Array:
 	for k in mods.structures:
 		var st: Dictionary = mods.structures[k]
 		if st.get("type", "") == "feu" and float(st.get("feu", 0)) > 0.0:
+			# un feu donne des cendres : une poignée par heure, six au plus
+			var burnt := minf(float(st["feu"]), minutes_passed)
+			st["cendres_t"] = float(st.get("cendres_t", 0.0)) + burnt
+			if float(st["cendres_t"]) >= 60.0:
+				st["cendres"] = mini(6, int(st.get("cendres", 0)) + int(float(st["cendres_t"]) / 60.0))
+				st["cendres_t"] = fmod(float(st["cendres_t"]), 60.0)
 			st["feu"] = maxf(0.0, float(st["feu"]) - minutes_passed)
 			if float(st["feu"]) == 0.0:
 				var cell := WorldMods.cell_of(k)
@@ -289,3 +315,73 @@ func place(type: String, pos: Vector2, facing: Vector2) -> bool:
 	mods.structures[WorldMods.key(cell)] = st
 	world.set_decor(cell, world.structure_decor(st))
 	return true
+
+
+# --- Peaux : tendre, sécher, tanner (étape 4) ---------------------------------------
+
+const HIDE_RESULT := {
+	"peau_lapin": ["fourrure_lapin", 1], "peau_renard": ["fourrure_renard", 1], "peau_loup": ["fourrure_loup", 1],
+	"peau_chevreuil": ["cuir", 2], "peau_sanglier": ["cuir", 2], "peau_chien": ["cuir", 1],
+}
+const DRY_MIN := 1440.0
+const TAN_MIN := 2880.0
+
+
+func _first_hide() -> String:
+	for id in HIDE_RESULT:
+		if inv.has(id):
+			return id
+	return ""
+
+
+func _drying_label(st: Dictionary) -> String:
+	match String(st.get("etat", "")):
+		"":
+			return "Tendre une peau" if _first_hide() != "" else ""
+		"sechage":
+			return "Tanner la peau" if surv.minutes >= float(st["t"]) else "Voir la peau"
+		"tannage":
+			if surv.minutes < float(st["t"]):
+				return "Voir la peau"
+			return "Décrocher le cuir" if HIDE_RESULT[st["peau"]][0] == "cuir" else "Décrocher la fourrure"
+	return ""
+
+
+func _drying(label: String, cell: Vector2i) -> Dictionary:
+	var st: Dictionary = mods.structures.get(WorldMods.key(cell), {})
+	match label:
+		"Tendre une peau":
+			var tool := "grattoir" if inv.has("grattoir") else ("couteau" if inv.has("couteau") else "")
+			if tool == "":
+				return {"msg": "Il faut un couteau ou un grattoir pour gratter la peau."}
+			var hide := _first_hide()
+			inv.remove(hide)
+			inv.wear(tool)
+			st["etat"] = "sechage"
+			st["peau"] = hide
+			st["t"] = surv.minutes + DRY_MIN
+			world.set_decor(cell, Tiles.D_SECHOIR_PEAU)
+			return {"msg": "Tu grattes la %s et la tends sur le cadre : elle séchera en un jour." % Items.name_of(hide).to_lower(),
+				"spend": 20.0, "anim": "ramasser"}
+		"Voir la peau":
+			var h := maxf(0.0, (float(st["t"]) - surv.minutes) / 60.0)
+			return {"msg": ("La peau sèche encore (%d h)." if st["etat"] == "sechage" else "Le tannage n'est pas fini (%d h).") % ceili(h)}
+		"Tanner la peau":
+			if not (inv.has("graisse") and inv.has("cendres")):
+				return {"msg": "Pour tanner : 1 graisse et 1 cendres (ramassées dans un feu éteint)."}
+			inv.remove("graisse")
+			inv.remove("cendres")
+			st["etat"] = "tannage"
+			st["t"] = surv.minutes + TAN_MIN
+			world.set_decor(cell, Tiles.D_SECHOIR_TANNE)
+			return {"msg": "Tu frottes la peau de graisse et de cendres : le tannage prendra deux jours.", "spend": 30.0, "anim": "ramasser"}
+		"Décrocher le cuir", "Décrocher la fourrure":
+			var res: Array = HIDE_RESULT[st["peau"]]
+			st["etat"] = ""
+			st.erase("peau")
+			st.erase("t")
+			world.set_decor(cell, Tiles.D_SECHOIR)
+			var r := _give({res[0]: res[1]}, "")
+			r["anim"] = "ramasser"
+			return r
+	return {}

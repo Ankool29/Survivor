@@ -33,7 +33,7 @@ var paused := false
 var animals: Array[Animal] = []
 var stock := {}                 ## "rx,ry,espèce" -> 0..1 (effectifs restants)
 var carcasses: Array = []       ## carcasses hors de portée : {x, y, sp, t, fleches}
-var pickups: Array = []         ## flèches au sol : {x, y, id, node}
+var pickups: Array = []         ## objets au sol : {x, y, id, n, usure?, node}
 
 var _habitat := {}              ## région -> {terrain: part}
 var _spawned := {}              ## région -> minute de la dernière apparition
@@ -162,6 +162,8 @@ func detect_range(a: Animal) -> float:
 		r *= 0.8
 	if daylight() < 0.3:
 		r *= 0.75
+	if surv.equip:
+		r *= maxf(0.6, 1.0 + surv.equip.total("bruit"))   # ciré, doudoune bruyants ; mocassins discrets
 	var cell := player.cell()
 	var g := world.ground_at(cell)
 	if world.flags_at(cell) & WorldGen.F_SLOW or g in [Tiles.G_HERBE_HAUTE, Tiles.G_LANDE, Tiles.G_SOL_FEUILLUS, Tiles.G_SOL_RESINEUX, Tiles.G_MARAIS]:
@@ -206,14 +208,17 @@ func should_attack(a: Animal, dist: float) -> bool:
 	var weak := surv.sante < 50.0 or surv.sleeping
 	# chances par décision (quatre par seconde)
 	var chance := 0.0
+	# bêtes farouches : elles suivent de loin et n'attaquent qu'un joueur affaibli,
+	# qui fuit, ou la nuit en plein hiver (meute affamée)
+	var winter := season() == 3
 	if a.sp_id == "loup":
-		chance = 0.03 if (night or season() == 3) else 0.002
-		if pack >= 3:
-			chance += 0.01
+		chance = 0.0005 + (0.006 if night else 0.0) + (0.012 if winter and night else 0.0)
+		if pack >= 4:
+			chance += 0.003
 	else:
-		chance = 0.003 + (0.02 if night else 0.0) + (0.006 if pack >= 5 else 0.0)
+		chance = 0.0003 + (0.004 if night else 0.0) + (0.006 if winter else 0.0) + (0.002 if pack >= 5 else 0.0)
 	if fleeing:
-		chance += 0.08
+		chance += 0.05
 	if weak:
 		chance += 0.03
 	return randf() < chance
@@ -527,17 +532,22 @@ func _update_arrows(delta: float) -> void:
 			ar["node"].queue_free()
 			_arrows.erase(ar)
 			if randf() < 0.6 and not zone.is_water(c.x, c.y):
-				_drop_arrow(p + Vector2(0, 12))
+				drop_item(p + Vector2(0, 12), {"id": "fleche", "n": 1})
 
 
-func _drop_arrow(p: Vector2) -> void:
+## Pose un objet au sol (flèche perdue, objet jeté, sac trop plein…).
+func drop_item(p: Vector2, s: Dictionary) -> void:
 	var node := Sprite2D.new()
-	node.texture = Items.icon("fleche")
-	node.scale = Vector2(0.5, 0.5)
-	node.rotation = randf() * TAU
-	node.position = p
+	node.texture = Items.icon(s["id"])
+	node.scale = Vector2(0.5, 0.5) if s["id"] == "fleche" else Vector2(0.6, 0.6)
+	node.rotation = randf() * TAU if s["id"] == "fleche" else 0.0
+	node.position = p + (Vector2.ZERO if s["id"] == "fleche" else Vector2(0, -6))
 	world.entities.add_child(node)
-	pickups.append({"x": p.x, "y": p.y, "id": "fleche", "node": node})
+	var pk := s.duplicate()
+	pk["x"] = p.x
+	pk["y"] = p.y
+	pk["node"] = node
+	pickups.append(pk)
 
 
 # --- Pièges ----------------------------------------------------------------------
@@ -586,7 +596,9 @@ func to_data() -> Dictionary:
 			cs.append({"x": a.position.x, "y": a.position.y, "sp": a.sp_id, "t": a.dead_at, "fleches": a.arrows})
 	var pk := []
 	for p in pickups:
-		pk.append({"x": p["x"], "y": p["y"], "id": p["id"]})
+		var c: Dictionary = p.duplicate()
+		c.erase("node")
+		pk.append(c)
 	var st := {}
 	for k in stock:
 		st[k] = [_stock_of(k), now()]
@@ -597,7 +609,9 @@ func from_data(d: Dictionary) -> void:
 	stock = d.get("stock", {})
 	carcasses = d.get("carcasses", [])
 	for p in d.get("fleches", []):
-		_drop_arrow(Vector2(float(p["x"]), float(p["y"])))
+		var s: Dictionary = p.duplicate()
+		s["n"] = int(s.get("n", 1))
+		drop_item(Vector2(float(p["x"]), float(p["y"])), s)
 
 
 func _draw_blood() -> void:

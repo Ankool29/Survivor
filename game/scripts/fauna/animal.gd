@@ -155,7 +155,7 @@ func _decide(dist: float, player_pos: Vector2) -> void:
 				_flee_from(player_pos)
 		"sanglier":
 			if alerted and state in ["repos", "marche"]:
-				if dist < 4.0 or pv < float(sp["pv"]):
+				if dist < 3.0 or pv < float(sp["pv"]):
 					_set_state("charge")
 				else:
 					_flee_from(player_pos)
@@ -213,7 +213,7 @@ func _act(delta: float, dist: float, player_pos: Vector2) -> void:
 					alerted = false
 		"traque":
 			# tourne autour du joueur à distance
-			var ring := 8.0
+			var ring := 12.0
 			var side := Vector2.from_angle((position - player_pos).angle() + 0.4)
 			_move_to(player_pos + side * ring * TILE, walk * 1.6, delta)
 		"attaque":

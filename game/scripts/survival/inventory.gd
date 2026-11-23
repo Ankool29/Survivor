@@ -6,6 +6,7 @@ signal changed
 
 var slots: Array = []
 var clock := Callable()          ## minutes de jeu (pour les denrées qui se gâtent)
+var pile_bonus := {}             ## piles agrandies (flèches dans un carquois)
 
 
 func _init(size := 16) -> void:
@@ -15,6 +16,33 @@ func _init(size := 16) -> void:
 func resize(size: int) -> void:
 	while slots.size() < size:
 		slots.append({})
+
+
+## Réduit le nombre de cases : renvoie ce qui ne rentre plus ([{id, n, …}]).
+func shrink(size: int) -> Array:
+	var over := []
+	# tasse d'abord les objets vers le début
+	var kept := []
+	for s in slots:
+		if not s.is_empty():
+			kept.append(s)
+	slots = []
+	for s in kept:
+		if slots.size() < size:
+			slots.append(s)
+		else:
+			over.append(s)
+	resize(size)
+	changed.emit()
+	return over
+
+
+func weight() -> float:
+	var w := 0.0
+	for s in slots:
+		if not s.is_empty():
+			w += Items.weight(s["id"]) * int(s["n"])
+	return w
 
 
 func count(id: String) -> int:
@@ -31,7 +59,7 @@ func has(id: String, n := 1) -> bool:
 
 ## Ajoute n objets ; renvoie le nombre qui n'a pas trouvé de place.
 func add(id: String, n := 1) -> int:
-	var pile := int(Items.info(id).get("pile", 10))
+	var pile := int(pile_bonus.get(id, Items.info(id).get("pile", 10)))
 	for s in slots:
 		if n <= 0:
 			break
@@ -54,6 +82,34 @@ func add(id: String, n := 1) -> int:
 			n -= k
 	changed.emit()
 	return n
+
+
+## Ajoute une case telle quelle (garde l'usure) ; renvoie ce qui reste ({} si tout est rangé).
+func add_stack(st: Dictionary) -> Dictionary:
+	if st.has("usure") or st.has("exp"):
+		for i in slots.size():
+			if slots[i].is_empty():
+				slots[i] = {"id": st["id"], "n": int(st.get("n", 1))}
+				for k in ["usure", "exp"]:
+					if st.has(k):
+						slots[i][k] = st[k]
+				changed.emit()
+				return {}
+		return st
+	var left := add(st["id"], int(st.get("n", 1)))
+	if left == 0:
+		return {}
+	var r := st.duplicate()
+	r["n"] = left
+	return r
+
+
+## Retire une case entière et la renvoie.
+func take_slot(i: int) -> Dictionary:
+	var s: Dictionary = slots[i]
+	slots[i] = {}
+	changed.emit()
+	return s
 
 
 func remove(id: String, n := 1) -> bool:
@@ -97,7 +153,8 @@ func spoil(now: float) -> int:
 			var k := int(s["n"])
 			slots[i] = {}
 			n += k
-			add("viande_avariee", k)
+			if not String(s["id"]).begins_with("peau_"):   # une peau pourrie se jette
+				add("viande_avariee", k)
 	if n > 0:
 		changed.emit()
 	return n
