@@ -10,7 +10,7 @@ Choix retenus : le personnage change d'apparence selon le vêtement de torse (4 
 - 7 emplacements : le carquois a le sien (ceinture) ; porté, il fait tenir 60 flèches dans une seule case ;
 - départ habillé : veste de travail, pantalon de travail, chaussures de rando et sac de courses, déjà usés ;
 - tendre une peau se fait d'un coup (grattage compris) sur le cadre de séchage ; les cendres se ramassent dans un feu éteint (une poignée par heure de feu) ;
-- sans sac : 12 cases et 20 kg ; au-delà de la charge, on ralentit (jusqu'à moitié moins vite) et on se fatigue plus ; très chargé, on ne peut plus courir ;
+- sans sac : 12 cases et 25 kg (sac de courses +6, sac à dos +15, sac en cuir +22, sac de rando +30) ; au-delà, on ralentit un peu (jusqu’à 40 % à double charge) et on se fatigue plus ; à plus de 150 %, on ne peut plus courir ; les vêtements portés comptent peu ;
 - « Jeter » pose désormais l'objet par terre, où on peut le reprendre ;
 - le ciré a une capuche : il protège aussi la tête de la pluie ; des gants évitent les égratignures des ronces.
 

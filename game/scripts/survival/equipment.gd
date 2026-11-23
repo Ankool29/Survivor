@@ -56,17 +56,17 @@ func bag_slots() -> int:
 	return int(Items.info(id).get("cases", 12)) if id != "" else 12
 
 
-## Charge supportée en kg (20 kg sans sac).
+## Charge supportée en kg (25 kg sans sac).
 func capacity() -> float:
 	var id := item("dos")
-	return 20.0 + (float(Items.info(id).get("charge", 0.0)) if id != "" else 0.0)
+	return 25.0 + (float(Items.info(id).get("charge", 0.0)) if id != "" else 0.0)
 
 
 func worn_weight() -> float:
 	var w := 0.0
 	for s in slots:
 		if item(s) != "":
-			w += Items.weight(item(s)) * 0.5      # porté, ça pèse moins
+			w += Items.weight(item(s)) * 0.25     # porté, ça pèse peu
 	return w
 
 

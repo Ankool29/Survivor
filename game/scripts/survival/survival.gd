@@ -152,7 +152,7 @@ func tick(dt: float, speed := 1.0) -> void:
 	if sleeping:
 		fatigue = minf(100.0, fatigue + 100.0 / 7.0 * sleep_quality * h)
 	else:
-		var heavy := 1.0 + maxf(0.0, load_ratio - 1.0) * 1.5
+		var heavy := 1.0 + maxf(0.0, load_ratio - 1.0)
 		fatigue = maxf(0.0, fatigue - 100.0 / 20.0 * h * (1.4 if running else 1.0) * heavy)
 	# Mouillé / séchage
 	var imper := equip.impermeability() if equip else 0.0

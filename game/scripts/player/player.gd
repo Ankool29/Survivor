@@ -166,7 +166,7 @@ func _process(delta: float) -> void:
 	if keys.length() > 0.1:
 		dir = keys
 	var running := run or Input.is_action_pressed("run")
-	_running_now = running and not crouch and load_factor > 0.7
+	_running_now = running and not crouch and load_factor > 0.81
 	moving = dir.length() > 0.1
 	if moving:
 		if dir.length() > 1.0:

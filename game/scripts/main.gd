@@ -275,7 +275,8 @@ func _tick_survival(delta: float) -> void:
 	# charge : au-delà de ce que le sac supporte, on ralentit
 	var carried := inv.weight() + equip.worn_weight()
 	surv.load_ratio = carried / equip.capacity()
-	player.load_factor = clampf(1.0 - (surv.load_ratio - 1.0), 0.5, 1.0)
+	# au-delà de la charge supportée : jusqu'à 40 % plus lent à 200 %
+	player.load_factor = clampf(1.0 - (surv.load_ratio - 1.0) * 0.4, 0.6, 1.0)
 	var speed := SLEEP_SPEED if surv.sleeping else 1.0
 	var before := surv.minutes
 	surv.tick(delta, speed)

@@ -43,7 +43,7 @@ const DB := {
 	"manteau": {"nom": "Manteau", "pile": 1, "emplacement": "torse", "chaleur": 7.0, "imper": 0.3, "protection": 0.1, "usure": 120, "reparer": "tissu"},
 	"livre": {"nom": "Vieux livre", "pile": 5},
 	"bidon": {"nom": "Jerrican", "pile": 2},
-	"sac": {"nom": "Sac à dos", "pile": 1, "emplacement": "dos", "cases": 20, "charge": 10.0, "usure": 300, "reparer": "tissu"},
+	"sac": {"nom": "Sac à dos", "pile": 1, "emplacement": "dos", "cases": 20, "charge": 15.0, "usure": 300, "reparer": "tissu"},
 	"allumettes": {"nom": "Allumettes", "pile": 20},
 	"bougie": {"nom": "Bougie", "pile": 10},
 	# Étape 3 : chasse et pêche. « garde » : minutes avant de se gâter.
@@ -83,8 +83,8 @@ const DB := {
 	"chaussures_rando": {"nom": "Chaussures de rando", "pile": 1, "emplacement": "pieds", "chaleur": 2.0, "imper": 0.4, "protection": 0.05, "usure": 160, "reparer": "cuir"},
 	"gants_jardin": {"nom": "Gants de jardin", "pile": 1, "emplacement": "mains", "chaleur": 0.5, "protection": 0.05, "usure": 80, "reparer": "tissu"},
 	"gants_laine": {"nom": "Gants de laine", "pile": 1, "emplacement": "mains", "chaleur": 1.5, "usure": 60, "reparer": "tissu"},
-	"sac_courses": {"nom": "Sac de courses", "pile": 1, "emplacement": "dos", "cases": 16, "charge": 5.0, "usure": 150, "reparer": "tissu"},
-	"sac_rando": {"nom": "Sac de rando", "pile": 1, "emplacement": "dos", "cases": 28, "charge": 18.0, "usure": 400, "reparer": "tissu"},
+	"sac_courses": {"nom": "Sac de courses", "pile": 1, "emplacement": "dos", "cases": 16, "charge": 6.0, "usure": 150, "reparer": "tissu"},
+	"sac_rando": {"nom": "Sac de rando", "pile": 1, "emplacement": "dos", "cases": 28, "charge": 30.0, "usure": 400, "reparer": "tissu"},
 	# Étape 4 : vêtements fabriqués
 	"bonnet_fourrure": {"nom": "Bonnet de fourrure", "pile": 1, "emplacement": "tete", "chaleur": 4.0, "imper": 0.3, "protection": 0.05, "usure": 150, "reparer": "fourrure"},
 	"gilet_peau": {"nom": "Gilet de peau", "pile": 1, "emplacement": "torse", "chaleur": 4.0, "imper": 0.4, "protection": 0.2, "tenue": "cuir", "usure": 200, "reparer": "cuir"},
@@ -93,7 +93,7 @@ const DB := {
 	"mocassins": {"nom": "Mocassins", "pile": 1, "emplacement": "pieds", "chaleur": 1.5, "imper": 0.2, "bruit": -0.15, "usure": 120, "reparer": "cuir"},
 	"bottes_fourrees": {"nom": "Bottes fourrées", "pile": 1, "emplacement": "pieds", "chaleur": 4.0, "imper": 0.4, "protection": 0.05, "usure": 200, "reparer": "cuir"},
 	"moufles": {"nom": "Moufles de fourrure", "pile": 1, "emplacement": "mains", "chaleur": 3.0, "usure": 120, "reparer": "fourrure"},
-	"sac_cuir": {"nom": "Sac en cuir", "pile": 1, "emplacement": "dos", "cases": 24, "charge": 14.0, "usure": 400, "reparer": "cuir"},
+	"sac_cuir": {"nom": "Sac en cuir", "pile": 1, "emplacement": "dos", "cases": 24, "charge": 22.0, "usure": 400, "reparer": "cuir"},
 	"carquois": {"nom": "Carquois", "pile": 1, "emplacement": "ceinture", "usure": 300, "reparer": "cuir"},
 	# Étape 4 : matières et outils de couture
 	"cuir": {"nom": "Cuir", "pile": 10},
@@ -111,13 +111,13 @@ const DB := {
 const SLOTS := ["tete", "torse", "mains", "jambes", "pieds", "dos", "ceinture"]
 const SLOT_NAMES := {"tete": "Tête", "torse": "Torse", "mains": "Mains", "jambes": "Jambes", "pieds": "Pieds", "dos": "Sac", "ceinture": "Ceinture"}
 
-## Poids en kg (0,3 kg si absent).
+## Poids en kg (0,2 kg si absent).
 const WEIGHT := {
-	"buche": 2.5, "pierre": 1.0, "planche": 1.5, "ferraille": 1.5, "bidon": 2.0, "bache": 1.5, "branche": 0.5,
-	"bouteille_eau": 1.0, "bouteille_bouillie": 1.0, "bouteille_vide": 0.1, "conserve": 0.4, "livre": 0.5,
-	"hache": 1.5, "lance": 1.5, "arc": 1.0, "fleche": 0.05, "couteau": 0.2, "clous": 0.02, "silex": 0.2,
+	"buche": 1.5, "pierre": 0.5, "planche": 1.0, "ferraille": 1.0, "bidon": 1.0, "bache": 1.0, "branche": 0.3,
+	"bouteille_eau": 0.8, "bouteille_bouillie": 0.8, "bouteille_vide": 0.1, "conserve": 0.4, "livre": 0.5,
+	"hache": 1.2, "lance": 1.0, "arc": 1.0, "fleche": 0.05, "couteau": 0.2, "clous": 0.02, "silex": 0.2,
 	"viande": 1.0, "petite_viande": 0.4, "viande_cuite": 0.8, "viande_sechee": 0.2, "poisson": 0.6,
-	"peau_lapin": 0.3, "peau_renard": 0.8, "peau_chevreuil": 2.5, "peau_sanglier": 4.0, "peau_loup": 2.0, "peau_chien": 1.5,
+	"peau_lapin": 0.2, "peau_renard": 0.5, "peau_chevreuil": 1.5, "peau_sanglier": 2.5, "peau_loup": 1.5, "peau_chien": 1.0,
 	"os": 0.3, "graisse": 0.5, "defense": 0.2, "cuir": 0.8, "fourrure_lapin": 0.2, "fourrure_renard": 0.6,
 	"fourrure_loup": 1.5, "cendres": 0.1, "fil": 0.01, "fibre": 0.05, "tissu": 0.2, "corde": 0.2, "mures": 0.05,
 	"pomme": 0.2, "champignon": 0.1, "nasse": 2.0, "collet": 0.1,
@@ -126,7 +126,7 @@ const WEIGHT := {
 
 
 static func weight(id: String) -> float:
-	return float(WEIGHT.get(id, 0.3))
+	return float(WEIGHT.get(id, 0.2))
 
 ## Cuisson au feu : objet cru -> [objet cuit, bouton, minutes de jeu].
 const COOK := {
