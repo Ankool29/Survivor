@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./tools/sprites/raw/**)",
+      "Read(./game/data/zones/**/*.bin.gz)",
+      "Read(./game/data/zones/**/*.bin)"
+    ]
+  }
+}
