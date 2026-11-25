@@ -4830,6 +4830,13 @@
 "population": 0
 },
 {
+"name": "Keradennec",
+"kind": "hamlet",
+"x": 19131.7,
+"y": 14171.7,
+"population": 0
+},
+{
 "name": "Keradennec le Moulin",
 "kind": "hamlet",
 "x": 20637.8,
@@ -13332,13 +13339,6 @@
 "kind": "hamlet",
 "x": 21874.4,
 "y": 4744.0,
-"population": 0
-},
-{
-"name": "Kerradenec",
-"kind": "hamlet",
-"x": 19127.5,
-"y": 14132.2,
 "population": 0
 },
 {
@@ -21975,8 +21975,8 @@
 {
 "name": "Noneno",
 "kind": "hamlet",
-"x": 19115.8,
-"y": 13958.7,
+"x": 19098.5,
+"y": 13960.2,
 "population": 0
 },
 {

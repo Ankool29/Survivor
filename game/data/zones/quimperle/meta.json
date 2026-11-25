@@ -17,6 +17,7 @@
   "roads",
   "bld"
  ],
+ "detailed_buildings": true,
  "elev_step": 4,
  "elev_w": 6250,
  "elev_h": 6250,
@@ -70,16 +71,16 @@
    "parc": 1138224
   },
   "roads": {
-   "aucune": 515345047,
+   "aucune": 515344942,
    "voie_rapide": 471527,
    "principale": 486109,
-   "secondaire": 3425527,
-   "rue": 9545538,
-   "chemin": 5288769,
+   "secondaire": 3425699,
+   "rue": 9545468,
+   "chemin": 5288772,
    "rail": 211243
   },
-  "pois": 3313,
+  "pois": 3312,
   "places": 5737,
-  "buildings": 296422
+  "buildings": 296426
  }
 }

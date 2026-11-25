@@ -1,13 +1,15 @@
-== Sun Nov 22 17:57:04 UTC 2026 : zone quimperle
+== Wed Nov 25 05:29:50 UTC 2026 : zone quimperle
 Extrait OSM : https://download.geofabrik.de/europe/france/bretagne/bretagne-latest.osm.pbf
 Boite : -3.94047,47.60923,-3.16079,48.13380
 Relief IGN...
   IGN : 256 tuiles
 Zone quimperle : 25000 x 25000 cases de 2.00 m, 25 x 25 tuiles de 1024
 Lecture OSM : /tmp/src/zone.osm.pbf
-  surfaces 18311, cours d'eau 5364, voies 73078, batiments 296422, lieux 3313, noms 5737
+  surfaces 18311, cours d'eau 5364, voies 73082, batiments 296426, lieux 3312, noms 5737
   relief : IGN RGE ALTI, 30931790 cases renseignees
 Préparation des géométries…
+Bâtiments détaillés…
+  291132 bâtiments détaillés
   rangée 1/25 (25 tuiles écrites)
   rangée 2/25 (50 tuiles écrites)
   rangée 3/25 (75 tuiles écrites)
@@ -33,5 +35,5 @@ Préparation des géométries…
   rangée 23/25 (499 tuiles écrites)
   rangée 24/25 (504 tuiles écrites)
   rangée 25/25 (510 tuiles écrites)
-Termine : 510 tuiles ; {"aucune": 515345047, "voie_rapide": 471527, "principale": 486109, "secondaire": 3425527, "rue": 9545538, "chemin": 5288769, "rail": 211243}
-== termine Sun Nov 22 18:06:16 UTC 2026
+Termine : 510 tuiles ; {"aucune": 515344942, "voie_rapide": 471527, "principale": 486109, "secondaire": 3425699, "rue": 9545468, "chemin": 5288772, "rail": 211243}
+== termine Wed Nov 25 05:41:27 UTC 2026
