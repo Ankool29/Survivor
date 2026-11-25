@@ -141,6 +141,9 @@ class Collector(osmium.SimpleHandler):
         self.real = real
         self.building_special = []
         self.building_roof = []       # 1 ardoise, 2 tôle
+        self.building_tag = []        # valeur de building=*
+        self.building_kind = []       # lieu notable (poi) ou ""
+        self.building_levels = []     # building:levels (0 si inconnu)
         self.wkb = osmium.geom.WKBFactory()
         self.landcover = []   # (priorite, geometrie, code terrain)
         self.water_lines = []  # (geometrie, largeur en cases)
@@ -279,6 +282,12 @@ class Collector(osmium.SimpleHandler):
             metal = btag in METAL_ROOF or (kind and kind not in SLATE_KINDS) or \
                 (btag == "yes" and g.area > 900)
             self.building_roof.append(2 if metal else 1)
+            self.building_tag.append(btag)
+            self.building_kind.append(kind or "")
+            try:
+                self.building_levels.append(int(float(tags.get("building:levels", "0"))))
+            except ValueError:
+                self.building_levels.append(0)
             if not kind and g.area > 1500:
                 b = tags.get("building")
                 kind = {"industrial": "entrepot", "warehouse": "entrepot", "retail": "magasin",

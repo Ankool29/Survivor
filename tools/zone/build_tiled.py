@@ -9,6 +9,9 @@ Sortie (dossier --out) :
                        bâtiments : (bits 0-3) 1 sol, 2 mur, 3 sol de bâtiment notable, 4 porte ;
                        (bits 4-5) toit : 0 aucun, 1 ardoise, 2 tôle ; (bits 6-7) état :
                        0 intact, 1 toit effondré, 2 ruine
+  tiles/<tx>_<ty>.bld.json.gz  bâtiments détaillés dont le centre est dans la tuile :
+                       type, toit, état, étages, emprise au mètre (grille fine : 1 case = 2 x 2),
+                       direction de la rue la plus proche
   elev.bin.gz          altitude en mètres (0-255), grille grossière (ELEV_STEP cases)
   pois.json, places.json
   preview.png          aperçu réduit pour la carte du jeu
@@ -24,6 +27,7 @@ import os
 import numpy as np
 import shapely
 import shapely.affinity
+import shapely.ops
 from affine import Affine
 from rasterio import features
 from scipy import ndimage
@@ -66,6 +70,80 @@ def orthogonalize(g, max_deg=25.0):
         return g
     except Exception:
         return g
+
+
+def align_clusters(geoms):
+    """Aligne chaque groupe de bâtiments accolés sur les axes de la grille, d'un seul bloc
+    (rotation autour du centre du groupe) : formes et dimensions sont conservées,
+    seule l'orientation est redressée, et les maisons mitoyennes restent jointives."""
+    tree = shapely.STRtree(geoms)
+    n = len(geoms)
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    for i, g in enumerate(geoms):
+        for j in tree.query(g.buffer(0.3)):
+            if j != i:
+                a, b = find(i), find(int(j))
+                if a != b:
+                    parent[a] = b
+    groups = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+    out = list(geoms)
+    for members in groups.values():
+        big = max(members, key=lambda k: geoms[k].area)
+        try:
+            rect = geoms[big].simplify(0.6, preserve_topology=True).minimum_rotated_rectangle
+            xs, ys = rect.exterior.coords.xy
+            ang = np.degrees(np.arctan2(ys[1] - ys[0], xs[1] - xs[0]))
+            ang = (ang + 45.0) % 90.0 - 45.0
+            if abs(ang) < 0.5:
+                continue
+            c = shapely.union_all([geoms[k] for k in members]).centroid
+            for k in members:
+                out[k] = shapely.affinity.rotate(geoms[k].simplify(0.3, preserve_topology=True), -ang, origin=c)
+        except Exception:
+            pass
+    return out, groups
+
+
+def building_type(tag, kind, area, aspect):
+    """Type de plan intérieur (voir docs/BATIMENTS2.md)."""
+    if kind == "eglise" or tag in ("church", "chapel", "cathedral"):
+        return "eglise"
+    if kind in ("ecole", "mairie", "bibliotheque", "musee", "gendarmerie", "pompiers", "hopital") \
+            or tag in ("school", "public", "civic", "hospital", "university", "college"):
+        return "public"
+    if kind in ("supermarche", "magasin"):
+        return "commerce_grand"
+    if kind in ("epicerie", "pharmacie", "quincaillerie", "station_service") or tag in ("retail", "commercial", "kiosk"):
+        return "commerce"
+    if kind == "garage" or tag in ("industrial", "warehouse", "hangar", "manufacture", "storage_tank"):
+        return "hangar"
+    if tag in ("barn", "farm_auxiliary", "cowshed", "stable", "sty", "greenhouse"):
+        return "grange"
+    if tag in ("garage", "garages", "shed", "hut", "carport", "roof", "service", "outbuilding"):
+        return "annexe"
+    if tag == "apartments":
+        return "immeuble"
+    if tag in ("farm", "farmhouse") or kind == "ferme":
+        return "longere"
+    if area < 25:
+        return "annexe"
+    if tag in ("house", "detached", "semidetached_house", "terrace", "bungalow", "residential", "yes"):
+        if tag == "yes" and area > 400:
+            return "hangar"
+        if tag == "residential" and area > 250:
+            return "immeuble"
+        if aspect > 2.4 and area > 60:
+            return "longere"
+        return "maison"
+    return "maison"
 
 
 def pick_doors(ids, bld, rd, inner):
@@ -111,7 +189,7 @@ def build(cfg, src, out):
     T = int(cfg["tile"])
     n_t = (grid.size + T - 1) // T
     os.makedirs(os.path.join(out, "tiles"), exist_ok=True)
-    for old in glob.glob(os.path.join(out, "tiles", "*.bin.gz")) + glob.glob(os.path.join(out, "*.bin*")):
+    for old in glob.glob(os.path.join(out, "tiles", "*.gz")) + glob.glob(os.path.join(out, "*.bin*")):
         os.remove(old)
     log("Zone %s : %d x %d cases de %.2f m, %d x %d tuiles de %d" % (
         cfg["name"], grid.size, grid.size, grid.cell, n_t, n_t, T))
@@ -151,7 +229,7 @@ def build(cfg, src, out):
     roads = sorted(col.roads, key=lambda t: order[t[0]])
     road_geoms = [g.buffer(REAL_WIDTH_M[c] / 2, cap_style="flat") for c, g in roads]
     road_vals = [c for c, _ in roads]
-    bld_geoms = [orthogonalize(g) for g in col.buildings]
+    bld_geoms, bld_groups = align_clusters(col.buildings)
     bld_spec = col.building_special
     bld_roof = col.building_roof
     # État de chaque bâtiment (stable pour une même carte) : 0 intact, 1 toit effondré, 2 ruine
@@ -160,6 +238,58 @@ def build(cfg, src, out):
     bld_state = np.where(rr < 0.85, 0, np.where(rr < 0.95, 1, 2)).astype(np.uint8)
     trees = {name: shapely.STRtree(gs) if gs else None for name, gs in
              [("land", land_geoms), ("water", water), ("road", road_geoms), ("bld", bld_geoms)]}
+
+    # --- Bâtiments détaillés : emprise au mètre, type, rue la plus proche
+    log("Bâtiments détaillés…")
+    fine = grid.cell / 2.0
+    road_lines = [g for c, g in roads]
+    road_tree = shapely.STRtree(road_lines) if road_lines else None
+    records = {}
+    for members in bld_groups.values():
+        u = shapely.union_all([bld_geoms[k] for k in members])
+        minx, miny, maxx, maxy = u.bounds
+        fx0 = int(np.floor((minx - grid.x0) / fine))
+        fy0 = int(np.floor((grid.y1 - maxy) / fine))
+        fw = int(np.ceil((maxx - grid.x0) / fine)) - fx0 + 1
+        fh = int(np.ceil((grid.y1 - miny) / fine)) - fy0 + 1
+        if fw <= 0 or fh <= 0 or fw * fh > 400 * 400:
+            continue
+        tr = Affine(fine, 0, grid.x0 + fx0 * fine, 0, -fine, grid.y1 - fy0 * fine)
+        lab = np.zeros((fh, fw), np.int32)
+        order = sorted(members, key=lambda k: -bld_geoms[k].area)
+        features.rasterize([(bld_geoms[k], n + 1) for n, k in enumerate(order)], out=lab, transform=tr)
+        for n, k in enumerate(order):
+            m = lab == n + 1
+            if m.sum() < 4:
+                continue
+            ys, xs = np.nonzero(m)
+            y0, y1_, x0_, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+            m = m[y0:y1_, x0_:x1]
+            g = bld_geoms[k]
+            rect = g.minimum_rotated_rectangle
+            ex = rect.exterior.coords
+            sides = sorted([np.hypot(ex[i + 1][0] - ex[i][0], ex[i + 1][1] - ex[i][1]) for i in range(2)])
+            aspect = sides[1] / max(sides[0], 0.1)
+            rdir = [0.0, 1.0]
+            if road_tree is not None:
+                c = g.centroid
+                j = road_tree.nearest(c)
+                if j is not None:
+                    p = shapely.ops.nearest_points(c, road_lines[int(j)])[1]
+                    d = np.array([p.x - c.x, c.y - p.y])          # vers l'est, vers le sud
+                    nd = np.linalg.norm(d)
+                    if nd > 0.1 and nd < 80:
+                        rdir = [round(float(d[0] / nd), 2), round(float(d[1] / nd), 2)]
+            gx, gy = fx0 + x0_, fy0 + y0
+            tkey = (int(gx // 2 // T), int(gy // 2 // T))
+            records.setdefault(tkey, []).append({
+                "id": int(k), "t": building_type(col.building_tag[k], col.building_kind[k], g.area, aspect),
+                "k": col.building_kind[k], "r": int(bld_roof[k]), "s": int(bld_state[k]),
+                "lv": int(col.building_levels[k]), "x": int(gx), "y": int(gy),
+                "w": int(m.shape[1]), "h": int(m.shape[0]),
+                "m": __import__("base64").b64encode(np.packbits(m.ravel()).tobytes()).decode(),
+                "rd": rdir})
+    log("  %d bâtiments détaillés" % sum(len(v) for v in records.values()))
 
     def query(name, box):
         t = trees[name]
@@ -232,6 +362,9 @@ def build(cfg, src, out):
                 terr, rd, bld = pad(terr, TERRAIN["mer"]), pad(rd, 0), pad(bld, 0)
             with gzip.open(os.path.join(out, "tiles", "%d_%d.bin.gz" % (tx, ty)), "wb", compresslevel=9) as f:
                 f.write(terr.tobytes() + rd.tobytes() + bld.tobytes())
+            if (tx, ty) in records:
+                with gzip.open(os.path.join(out, "tiles", "%d_%d.bld.json.gz" % (tx, ty)), "wt", compresslevel=9) as f:
+                    json.dump(records[(tx, ty)], f, separators=(",", ":"))
             written += 1
             counts["terrain"] += np.bincount(terr.ravel(), minlength=256)
             counts["roads"] += np.bincount(rd.ravel(), minlength=256)
@@ -273,7 +406,7 @@ def build(cfg, src, out):
         "cells_per_km": grid.cells_per_km, "cell_m": grid.cell,
         "crs": "EPSG:2154", "origin_x": grid.x0, "origin_y": grid.y1,
         "mode": "reel", "tile": T, "tiles_x": n_t, "tiles_y": n_t,
-        "tile_layers": ["terrain", "roads", "bld"],
+        "tile_layers": ["terrain", "roads", "bld"], "detailed_buildings": True,
         "elev_step": ELEV_STEP, "elev_w": eg.size, "elev_h": eg.size,
         "terrain_codes": TERRAIN, "road_codes": ROADS,
         "sources": ["OpenStreetMap contributors (ODbL)", elev_src],
