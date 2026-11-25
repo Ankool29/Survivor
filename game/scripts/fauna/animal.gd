@@ -55,7 +55,7 @@ func is_dead() -> bool:
 
 
 func body_center() -> Vector2:
-	return position + Vector2(0, -8)
+	return position + Vector2(0, -5)
 
 
 ## Blessé par le joueur (flèche ou coup).
@@ -92,7 +92,7 @@ func die(restored := false) -> void:
 		_sprite.centered = true
 		_sprite.flip_v = true
 		_sprite.rotation = 0.12
-		_sprite.position = Vector2(0, -8)
+		_sprite.position = Vector2(0, -5)
 		_sprite.modulate = Color(0.8, 0.7, 0.68)
 	if not restored:
 		fauna.on_death(self)
@@ -286,7 +286,7 @@ func _play(anim: String) -> void:
 
 func _draw() -> void:
 	# ombre au sol, flaque de sang sous une carcasse
-	var w := 6.0 + float(sp.get("pv", 10)) * 0.12
+	var w := 4.0 + float(sp.get("pv", 10)) * 0.08
 	draw_set_transform(Vector2(0, -1), 0.0, Vector2(1.0, 0.4))
 	if is_dead():
 		draw_circle(Vector2(0, -6), w * 1.3, Color(0.4, 0.03, 0.03, 0.6))

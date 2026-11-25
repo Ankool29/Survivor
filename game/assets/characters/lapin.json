@@ -1,7 +1,7 @@
 {
- "frame_w": 40,
- "frame_h": 40,
- "feet_y": 28,
+ "frame_w": 24,
+ "frame_h": 24,
+ "feet_y": 18,
  "directions": [
   "south",
   "west",

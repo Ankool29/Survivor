@@ -102,3 +102,11 @@ Coût du lot 2 : environ 35 générations. Total depuis le début : environ 350 
 | Sols, murs, portes, fenêtres, toits au mètre | dessinés par programme | `tools/sprites/make_interior.py`, sans génération |
 
 Total depuis le début : 540 générations sur 2 000 (limite fixée : 1 600).
+
+# Lot de sprites 7 — Échelle et intérieurs façon Project Zomboid
+
+- Joueur (civil, ciré, cuir, fourrure) régénéré plus petit : environ 33 px de haut au lieu de 48, soit 2 cases fines (1 m chacune). Animations repos, marche, course, ramasser, frapper, boire ; la direction ouest est le miroir de l'est.
+- Faune régénérée à l'échelle : lapin 16, renard 26, chien 28, sanglier 32, loup 34, chevreuil 38.
+- Meubles : 66 sprites (face + côté `_cote`), posés contre les murs par pièce (cuisine en ligne de plans de travail, chambre avec lit et deux tables de nuit, séjour canapé/table basse/fauteuil/poêle).
+
+Total depuis le début : 692 générations sur 2 000 (limite fixée : 1 600).

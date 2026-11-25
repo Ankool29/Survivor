@@ -1,19 +1,19 @@
 {
-  "group_id": "8a21f351-6193-4324-9c81-998138e51a25",
+  "group_id": "41de5386-7a26-4ed8-9734-9f901f0f522f",
   "states": [
     {
       "character": {
-        "id": "a813bea1-8d33-4a07-83e3-0d8e0b632aa3",
+        "id": "7b5b5c01-f0eb-427e-8461-cb85b88af914",
         "name": "Idle",
         "prompt": "wild boar, stocky dark grey-brown bristly body, small tusks, long snout, short legs",
         "size": {
-          "width": 68,
-          "height": 68
+          "width": 48,
+          "height": 48
         },
         "template_id": "bear",
         "directions": 4,
         "view": "low top-down",
-        "created_at": "2026-11-22T19:15:23.111791+00:00"
+        "created_at": "2026-11-25T06:29:58.210989+00:00"
       },
       "folder": "Idle",
       "frames": {
@@ -24,36 +24,16 @@
           "north": "Idle/rotations/north.png"
         },
         "animations": {
-          "course": {
-            "south": [
-              "Idle/animations/course/south/frame_000.png",
-              "Idle/animations/course/south/frame_001.png",
-              "Idle/animations/course/south/frame_002.png",
-              "Idle/animations/course/south/frame_003.png",
-              "Idle/animations/course/south/frame_004.png",
-              "Idle/animations/course/south/frame_005.png",
-              "Idle/animations/course/south/frame_006.png"
-            ],
-            "east": [
-              "Idle/animations/course/east/frame_000.png",
-              "Idle/animations/course/east/frame_001.png",
-              "Idle/animations/course/east/frame_002.png",
-              "Idle/animations/course/east/frame_003.png",
-              "Idle/animations/course/east/frame_004.png",
-              "Idle/animations/course/east/frame_005.png",
-              "Idle/animations/course/east/frame_006.png"
-            ],
-            "north": [
-              "Idle/animations/course/north/frame_000.png",
-              "Idle/animations/course/north/frame_001.png",
-              "Idle/animations/course/north/frame_002.png",
-              "Idle/animations/course/north/frame_003.png",
-              "Idle/animations/course/north/frame_004.png",
-              "Idle/animations/course/north/frame_005.png",
-              "Idle/animations/course/north/frame_006.png"
-            ]
-          },
           "marche": {
+            "south": [
+              "Idle/animations/marche/south/frame_000.png",
+              "Idle/animations/marche/south/frame_001.png",
+              "Idle/animations/marche/south/frame_002.png",
+              "Idle/animations/marche/south/frame_003.png",
+              "Idle/animations/marche/south/frame_004.png",
+              "Idle/animations/marche/south/frame_005.png",
+              "Idle/animations/marche/south/frame_006.png"
+            ],
             "east": [
               "Idle/animations/marche/east/frame_000.png",
               "Idle/animations/marche/east/frame_001.png",
@@ -71,15 +51,6 @@
               "Idle/animations/marche/north/frame_004.png",
               "Idle/animations/marche/north/frame_005.png",
               "Idle/animations/marche/north/frame_006.png"
-            ],
-            "south": [
-              "Idle/animations/marche/south/frame_000.png",
-              "Idle/animations/marche/south/frame_001.png",
-              "Idle/animations/marche/south/frame_002.png",
-              "Idle/animations/marche/south/frame_003.png",
-              "Idle/animations/marche/south/frame_004.png",
-              "Idle/animations/marche/south/frame_005.png",
-              "Idle/animations/marche/south/frame_006.png"
             ]
           },
           "attaque": {
@@ -110,11 +81,40 @@
               "Idle/animations/attaque/south/frame_005.png",
               "Idle/animations/attaque/south/frame_006.png"
             ]
+          },
+          "course": {
+            "north": [
+              "Idle/animations/course/north/frame_000.png",
+              "Idle/animations/course/north/frame_001.png",
+              "Idle/animations/course/north/frame_002.png",
+              "Idle/animations/course/north/frame_003.png",
+              "Idle/animations/course/north/frame_004.png",
+              "Idle/animations/course/north/frame_005.png",
+              "Idle/animations/course/north/frame_006.png"
+            ],
+            "east": [
+              "Idle/animations/course/east/frame_000.png",
+              "Idle/animations/course/east/frame_001.png",
+              "Idle/animations/course/east/frame_002.png",
+              "Idle/animations/course/east/frame_003.png",
+              "Idle/animations/course/east/frame_004.png",
+              "Idle/animations/course/east/frame_005.png",
+              "Idle/animations/course/east/frame_006.png"
+            ],
+            "south": [
+              "Idle/animations/course/south/frame_000.png",
+              "Idle/animations/course/south/frame_001.png",
+              "Idle/animations/course/south/frame_002.png",
+              "Idle/animations/course/south/frame_003.png",
+              "Idle/animations/course/south/frame_004.png",
+              "Idle/animations/course/south/frame_005.png",
+              "Idle/animations/course/south/frame_006.png"
+            ]
           }
         }
       }
     }
   ],
   "export_version": "3.1",
-  "export_date": "2026-11-22T19:37:39.534517"
+  "export_date": "2026-11-25T06:47:00.342929"
 }

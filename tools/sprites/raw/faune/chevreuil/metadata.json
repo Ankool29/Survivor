@@ -1,19 +1,19 @@
 {
-  "group_id": "da227269-67a3-4727-8c2a-44b0a0f55a98",
+  "group_id": "2b53e31e-b556-43ea-81bc-1e09c185a758",
   "states": [
     {
       "character": {
-        "id": "0c955f42-de61-497c-9a76-a8147900ef51",
+        "id": "9fb93a42-4f7f-409d-b951-54bde45f00c1",
         "name": "Idle",
         "prompt": "wild roe deer, slender reddish-brown body, small antlers, white rump patch, thin legs",
         "size": {
-          "width": 80,
-          "height": 80
+          "width": 56,
+          "height": 56
         },
         "template_id": "horse",
         "directions": 4,
         "view": "low top-down",
-        "created_at": "2026-11-22T19:15:22.380523+00:00"
+        "created_at": "2026-11-25T06:29:57.618212+00:00"
       },
       "folder": "Idle",
       "frames": {
@@ -25,15 +25,6 @@
         },
         "animations": {
           "marche": {
-            "north": [
-              "Idle/animations/marche/north/frame_000.png",
-              "Idle/animations/marche/north/frame_001.png",
-              "Idle/animations/marche/north/frame_002.png",
-              "Idle/animations/marche/north/frame_003.png",
-              "Idle/animations/marche/north/frame_004.png",
-              "Idle/animations/marche/north/frame_005.png",
-              "Idle/animations/marche/north/frame_006.png"
-            ],
             "east": [
               "Idle/animations/marche/east/frame_000.png",
               "Idle/animations/marche/east/frame_001.png",
@@ -51,18 +42,18 @@
               "Idle/animations/marche/south/frame_004.png",
               "Idle/animations/marche/south/frame_005.png",
               "Idle/animations/marche/south/frame_006.png"
+            ],
+            "north": [
+              "Idle/animations/marche/north/frame_000.png",
+              "Idle/animations/marche/north/frame_001.png",
+              "Idle/animations/marche/north/frame_002.png",
+              "Idle/animations/marche/north/frame_003.png",
+              "Idle/animations/marche/north/frame_004.png",
+              "Idle/animations/marche/north/frame_005.png",
+              "Idle/animations/marche/north/frame_006.png"
             ]
           },
           "course": {
-            "east": [
-              "Idle/animations/course/east/frame_000.png",
-              "Idle/animations/course/east/frame_001.png",
-              "Idle/animations/course/east/frame_002.png",
-              "Idle/animations/course/east/frame_003.png",
-              "Idle/animations/course/east/frame_004.png",
-              "Idle/animations/course/east/frame_005.png",
-              "Idle/animations/course/east/frame_006.png"
-            ],
             "south": [
               "Idle/animations/course/south/frame_000.png",
               "Idle/animations/course/south/frame_001.png",
@@ -71,6 +62,15 @@
               "Idle/animations/course/south/frame_004.png",
               "Idle/animations/course/south/frame_005.png",
               "Idle/animations/course/south/frame_006.png"
+            ],
+            "east": [
+              "Idle/animations/course/east/frame_000.png",
+              "Idle/animations/course/east/frame_001.png",
+              "Idle/animations/course/east/frame_002.png",
+              "Idle/animations/course/east/frame_003.png",
+              "Idle/animations/course/east/frame_004.png",
+              "Idle/animations/course/east/frame_005.png",
+              "Idle/animations/course/east/frame_006.png"
             ],
             "north": [
               "Idle/animations/course/north/frame_000.png",
@@ -87,5 +87,5 @@
     }
   ],
   "export_version": "3.1",
-  "export_date": "2026-11-22T19:37:36.333659"
+  "export_date": "2026-11-25T06:46:58.703789"
 }

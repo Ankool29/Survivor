@@ -30,9 +30,7 @@ const ROOM_FLOOR := {
 ## Meubles par pièce : [nom, largeur, profondeur (m), nombre, contre un mur ?]
 const ROOM_FURNITURE := {
 	"entree": [["meuble_entree", 1, 1, 1]],
-	"sejour": [["canape", 2, 1, 1], ["buffet", 2, 1, 1], ["poele", 1, 1, 1], ["table_basse", 1, 1, 1], ["etagere_livres", 1, 1, 1]],
-	"cuisine": [["evier", 1, 1, 1], ["cuisiniere", 1, 1, 1], ["frigo", 1, 1, 1], ["placard", 1, 1, 2], ["table", 2, 1, 1]],
-	"chambre": [["lit", 2, 2, 1], ["armoire", 2, 1, 1], ["commode", 1, 1, 1]],
+	"bureau_maison": [["bureau", 2, 1, 1], ["etagere_livres", 1, 1, 1]],
 	"sdb": [["baignoire", 2, 1, 1], ["lavabo", 1, 1, 1], ["meuble_sdb", 1, 1, 1]],
 	"wc": [["wc", 1, 1, 1]],
 	"garage": [["etabli", 2, 1, 1], ["etageres", 2, 1, 2]],
@@ -58,7 +56,8 @@ const LOOT := {
 	"frigo": "frigo", "armoire": "chambre", "commode": "chambre", "meuble_sdb": "sdb",
 	"etabli": "atelier", "etageres": "atelier", "cartons": "reserve", "bureau": "bureau",
 	"armoire_bureau": "bureau", "comptoir": "vente", "rayonnage": "vente", "auge": "ferme",
-	"foin": "ferme", "palette": "reserve", "cuisiniere": "cuisine",
+	"foin": "ferme", "palette": "reserve", "cuisiniere": "cuisine", "plan_travail": "cuisine",
+	"table_nuit": "chambre",
 }
 
 var id := 0
@@ -78,7 +77,8 @@ var ew := PackedByteArray()          ## bord ouest de (cx, cy), cx <= w, cy < h 
 var furniture: Array = []            ## {t, x, y, w, h, loot}
 var material := "enduit"             ## murs : enduit, granit, parpaing, bois
 var _rng := RandomNumberGenerator.new()
-var _anchors := {}
+var _spots := {}
+var _door_mask := PackedByteArray()   ## cases devant une porte : on y passe, on n'y meuble pas
 
 static var _cache := {}
 static var _mutex := Mutex.new()
@@ -255,6 +255,48 @@ func _partition(road: Vector2) -> void:
 			room[i] = best
 			rooms[best]["area"] += 1
 			rooms[best]["cells"].append(i)
+	_split_components()
+
+
+## Une pièce faite de morceaux séparés : le plus grand garde la pièce, les autres
+## deviennent des pièces à part (ou rejoignent leur voisine s'ils sont minuscules).
+func _split_components() -> void:
+	var n0 := rooms.size()
+	for k in n0:
+		var cells: PackedInt32Array = rooms[k]["cells"]
+		if cells.size() == 0:
+			continue
+		var comp := {}
+		var parts: Array = []
+		for start in cells:
+			if comp.has(start):
+				continue
+			var part := PackedInt32Array([start])
+			comp[start] = true
+			var stack := [start]
+			while not stack.is_empty():
+				var i: int = stack.pop_back()
+				var cx := i % w
+				var cy := i / w
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var j: int = (cy + d.y) * w + cx + d.x
+					if room_at(cx + d.x, cy + d.y) == k and not comp.has(j):
+						comp[j] = true
+						part.append(j)
+						stack.append(j)
+			parts.append(part)
+		if parts.size() < 2:
+			continue
+		parts.sort_custom(func(a, b): return a.size() > b.size())
+		rooms[k]["cells"] = parts[0]
+		rooms[k]["area"] = parts[0].size()
+		for pi in range(1, parts.size()):
+			var nk := rooms.size()
+			rooms.append({"type": "", "area": parts[pi].size(), "cells": parts[pi]})
+			for i in parts[pi]:
+				room[i] = nk
+			if parts[pi].size() < 4:
+				_merge_into_neighbour(nk)
 
 
 func _cut(r: Rect2i, frac: float, vertical_cut: bool) -> Array:
@@ -715,6 +757,7 @@ func _ruin() -> void:
 func _furnish(_entry: int) -> void:
 	var used := PackedByteArray()
 	used.resize(w * h)
+	_door_mask.resize(w * h)
 	# cases devant les portes : toujours libres
 	for cy in range(h + 1):
 		for cx in range(w + 1):
@@ -725,7 +768,7 @@ func _furnish(_entry: int) -> void:
 				if v in [E_DOOR, E_IDOOR, E_BREACH]:
 					for c in ([Vector2i(cx, cy), Vector2i(cx, cy - 1)] if side == "n" else [Vector2i(cx, cy), Vector2i(cx - 1, cy)]):
 						if cell_in(c.x, c.y):
-							used[c.y * w + c.x] = 1
+							_door_mask[c.y * w + c.x] = 1
 	for k in rooms.size():
 		if rooms[k]["area"] == 0:
 			continue
@@ -733,67 +776,209 @@ func _furnish(_entry: int) -> void:
 			_overgrow(k, used)
 			if state == 2:
 				continue
-		var list: Array = ROOM_FURNITURE.get(rooms[k]["type"], [])
-		for f in list:
-			for n in int(f[3]):
-				if _rng.randf() < (0.35 if state == 1 else 0.0):
-					continue
-				_place(k, String(f[0]), int(f[1]), int(f[2]), used)
+		match rooms[k]["type"]:
+			"cuisine":
+				_kitchen(k, used)
+			"chambre":
+				_bedroom(k, used)
+			"sejour":
+				_living(k, used)
+			"salle_commune":
+				_counter_run(k, used, ["evier", "plan_travail", "cuisiniere"])
+				_on_wall(k, "cheminee", 2, 1, used)
+				_table_with_chairs(k, used)
+				_on_wall(k, "lit", 2, 2, used)
+			_:
+				for f in ROOM_FURNITURE.get(rooms[k]["type"], []):
+					for n in int(f[3]):
+						if state == 1 and _rng.randf() < 0.35:
+							continue
+						_on_wall(k, String(f[0]), int(f[1]), int(f[2]), used)
 
 
-## Pose un meuble contre un mur de la pièce k ; false s'il ne tient pas.
-func _place(k: int, t: String, fw: int, fd: int, used: PackedByteArray) -> bool:
-	var cells: PackedInt32Array = rooms[k]["cells"]
-	if not _anchors.has(k):
-		var an := [[], [], [], []]       # mur au nord, à l'ouest, à l'est, au sud
-		for i in cells:
-			var cx: int = i % w
-			var cy: int = i / w
-			if en[ei(cx, cy)] in [E_WALL, E_WINDOW]:
-				an[0].append(Vector2i(cx, cy))
-			if ew[ei(cx, cy)] == E_WALL:
-				an[1].append(Vector2i(cx, cy))
-			if ew[ei(cx + 1, cy)] == E_WALL:
-				an[2].append(Vector2i(cx, cy))
-			if en[ei(cx, cy + 1)] == E_WALL:
-				an[3].append(Vector2i(cx, cy))
-		_anchors[k] = an
-	var an2: Array = _anchors[k]
-	var tries := []
-	for c in an2[0]:
-		tries.append(Rect2i(c.x, c.y, fw, fd))
-	for c in an2[1]:
-		tries.append(Rect2i(c.x, c.y, fd, fw))
-	for c in an2[2]:
-		tries.append(Rect2i(c.x - fd + 1, c.y, fd, fw))
-	if fd == 1 and fw <= 2:
-		for c in an2[3]:
-			tries.append(Rect2i(c.x, c.y, fw, fd))
-	if tries.is_empty():
+## Façon Project Zomboid : un plan de travail continu le long d'un mur, une table au milieu.
+func _kitchen(k: int, used: PackedByteArray) -> void:
+	_counter_run(k, used, ["frigo", "evier", "plan_travail", "cuisiniere", "plan_travail", "placard", "plan_travail"])
+	_table_with_chairs(k, used)
+
+
+func _bedroom(k: int, used: PackedByteArray) -> void:
+	# lit tête contre le mur, une table de nuit de chaque côté
+	for spot in _wall_spots(k, 2, 2, ["n", "w", "e"]):
+		var r: Rect2i = spot[0]
+		var o: String = spot[1]
+		if _try(k, "lit", r, o, used):
+			var sides: Array = [Vector2i(r.position.x - 1, r.position.y), Vector2i(r.end.x, r.position.y)] if o == "n" \
+				else [Vector2i(r.position.x, r.position.y - 1), Vector2i(r.position.x, r.end.y)]
+			for c in sides:
+				if _back_wall(c, o):
+					_try(k, "table_nuit", Rect2i(c.x, c.y, 1, 1), o, used)
+			break
+	_on_wall(k, "armoire", 2, 1, used)
+	if _rng.randf() < 0.6:
+		_on_wall(k, "commode", 1, 1, used)
+
+
+func _living(k: int, used: PackedByteArray) -> void:
+	# canapé contre un mur, table basse devant, fauteuil à côté
+	for spot in _wall_spots(k, 2, 1, ["n", "w", "e"]):
+		var r: Rect2i = spot[0]
+		var o: String = spot[1]
+		if _try(k, "canape", r, o, used):
+			var front: Array
+			match o:
+				"n": front = [Rect2i(r.position.x, r.end.y + 1, 2, 1), Rect2i(r.position.x, r.end.y, 2, 1)]
+				"w": front = [Rect2i(r.end.x + 1, r.position.y, 1, 2), Rect2i(r.end.x, r.position.y, 1, 2)]
+				_: front = [Rect2i(r.position.x - 2, r.position.y, 1, 2), Rect2i(r.position.x - 1, r.position.y, 1, 2)]
+			for fr in front:
+				if _try(k, "table_basse", fr, "c", used):
+					break
+			break
+	if _rng.randf() < 0.7:
+		_on_wall(k, "fauteuil", 1, 1, used)
+	_on_wall(k, "poele" if _rng.randf() < 0.6 else "cheminee", 1 if _rng.randf() < 0.6 else 2, 1, used)
+	_on_wall(k, "buffet", 2, 1, used)
+	if _rng.randf() < 0.6:
+		_on_wall(k, "etagere_livres", 1, 1, used)
+
+
+## Meubles d'un mètre alignés le long du plus long mur libre de la pièce.
+func _counter_run(k: int, used: PackedByteArray, items: Array) -> void:
+	var best: Array = []
+	var best_o := "n"
+	for o in ["n", "w", "e"]:
+		var cells: Array = []
+		for spot in _wall_spots(k, 1, 1, [o]):
+			var r: Rect2i = spot[0]
+			if _fits(k, r, used):
+				cells.append(r.position)
+		cells.sort_custom(func(a, b): return (a.y * 10000 + a.x) < (b.y * 10000 + b.x) if o == "n" else (a.x * 10000 + a.y) < (b.x * 10000 + b.y))
+		var run: Array = []
+		for c in cells:
+			if run.is_empty():
+				run = [c]
+			else:
+				var last: Vector2i = run[-1]
+				var next_ok: bool = (c == last + Vector2i(1, 0)) if o == "n" else (c == last + Vector2i(0, 1))
+				if next_ok:
+					run.append(c)
+				else:
+					if run.size() > best.size():
+						best = run
+						best_o = o
+					run = [c]
+		if run.size() > best.size():
+			best = run
+			best_o = o
+	if best.size() < 2:
+		for t in items.slice(0, 3):
+			_on_wall(k, t, 1, 1, used)
+		return
+	var n := mini(best.size(), items.size())
+	for i in n:
+		var c: Vector2i = best[i]
+		_try(k, items[i], Rect2i(c.x, c.y, 1, 1), best_o, used)
+
+
+## Table de deux mètres au milieu de la pièce, une chaise à chaque bout.
+func _table_with_chairs(k: int, used: PackedByteArray) -> void:
+	if rooms[k]["area"] < 10:
+		return
+	var center := _center(k)
+	var cells: Array = Array(rooms[k]["cells"])
+	cells.sort_custom(func(a, b): return Vector2(a % w, a / w).distance_squared_to(center) < Vector2(b % w, b / w).distance_squared_to(center))
+	for i in cells:
+		var x: int = i % w
+		var y: int = i / w
+		var zone_r := Rect2i(x - 1, y - 1, 4, 3)          # table + chaises + un passage autour
+		if not _fits(k, Rect2i(x - 1, y, 4, 1), used):
+			continue
+		var clear := true
+		for cy in range(zone_r.position.y, zone_r.end.y):
+			for cx in range(zone_r.position.x, zone_r.end.x):
+				if room_at(cx, cy) == k and used[cy * w + cx] == 1:
+					clear = false
+		if not clear:
+			continue
+		if _try(k, "table", Rect2i(x, y, 2, 1), "c", used):
+			_try(k, "chaise", Rect2i(x - 1, y, 1, 1), "w", used)
+			_try(k, "chaise", Rect2i(x + 2, y, 1, 1), "e", used)
+			return
+
+
+## Un meuble contre un mur (de face au nord, de profil à l'ouest ou à l'est).
+func _on_wall(k: int, t: String, fw: int, fd: int, used: PackedByteArray) -> bool:
+	var spots := _wall_spots(k, fw, fd, ["n", "w", "e"])
+	if spots.is_empty():
 		return false
-	var start := _rng.randi_range(0, tries.size() - 1)
-	var check := cells.size() < 80          # grande pièce : on circule toujours
-	for n in mini(tries.size(), 24):
-		var r: Rect2i = tries[(start + n * 7) % tries.size()]
-		if _fits(k, r, used):
-			for cy in range(r.position.y, r.end.y):
-				for cx in range(r.position.x, r.end.x):
-					used[cy * w + cx] = 1
-			if check and not _still_open(k, used):
-				for cy in range(r.position.y, r.end.y):
-					for cx in range(r.position.x, r.end.x):
-						used[cy * w + cx] = 0
-				continue
-			furniture.append({"t": t, "x": r.position.x, "y": r.position.y, "w": r.size.x, "h": r.size.y,
-				"loot": LOOT.has(t), "room": rooms[k]["type"]})
+	var start := _rng.randi_range(0, spots.size() - 1)
+	for n in mini(spots.size(), 30):
+		var sp: Array = spots[(start + n * 7) % spots.size()]
+		if _try(k, t, sp[0], sp[1], used):
 			return true
 	return false
+
+
+## Emplacements le long des murs pleins : [rectangle, orientation].
+## Contre le mur nord, le meuble fait fw de large et fd de profondeur ; contre un mur
+## latéral, il est de profil (fd de large, fw de long).
+func _wall_spots(k: int, fw: int, fd: int, sides: Array) -> Array:
+	var ck := "%d,%d,%d,%s" % [k, fw, fd, ",".join(sides)]
+	if _spots.has(ck):
+		return _spots[ck]
+	var out := []
+	for i in rooms[k]["cells"]:
+		var c := Vector2i(i % w, i / w)
+		for o in sides:
+			var r: Rect2i
+			match o:
+				"n": r = Rect2i(c.x, c.y, fw, fd)
+				"w": r = Rect2i(c.x, c.y, fd, fw)
+				_: r = Rect2i(c.x - fd + 1, c.y, fd, fw)
+			var ok := true
+			var along := fw
+			for j in along:
+				var bc: Vector2i = (Vector2i(c.x + j, c.y) if o == "n" else Vector2i(c.x, c.y + j))
+				if not _back_wall(bc, o):
+					ok = false
+					break
+			if ok:
+				out.append([r, o])
+	_spots[ck] = out
+	return out
+
+
+## Mur plein derrière la case c pour un meuble orienté o.
+func _back_wall(c: Vector2i, o: String) -> bool:
+	if not cell_in(c.x, c.y):
+		return false
+	match o:
+		"n": return en[ei(c.x, c.y)] == E_WALL
+		"w": return ew[ei(c.x, c.y)] == E_WALL
+		"e": return ew[ei(c.x + 1, c.y)] == E_WALL
+	return false
+
+
+func _try(k: int, t: String, r: Rect2i, o: String, used: PackedByteArray) -> bool:
+	if not _fits(k, r, used):
+		return false
+	for cy in range(r.position.y, r.end.y):
+		for cx in range(r.position.x, r.end.x):
+			used[cy * w + cx] = 1
+	if rooms[k]["area"] < 80 and not _still_open(k, used):
+		for cy in range(r.position.y, r.end.y):
+			for cx in range(r.position.x, r.end.x):
+				used[cy * w + cx] = 0
+		return false
+	furniture.append({"t": t, "x": r.position.x, "y": r.position.y, "w": r.size.x, "h": r.size.y,
+		"o": o, "loot": LOOT.has(t), "room": rooms[k]["type"]})
+	return true
 
 
 func _fits(k: int, r: Rect2i, used: PackedByteArray) -> bool:
 	for cy in range(r.position.y, r.end.y):
 		for cx in range(r.position.x, r.end.x):
-			if room_at(cx, cy) != k or used[cy * w + cx] == 1:
+			if room_at(cx, cy) != k or used[cy * w + cx] == 1 or _door_mask[cy * w + cx] == 1:
 				return false
 	return true
 
@@ -839,7 +1024,7 @@ func _overgrow(k: int, used: PackedByteArray) -> void:
 			t = "jeune_arbre"
 		if t != "":
 			used[i] = 1
-			furniture.append({"t": t, "x": i % w, "y": i / w, "w": 1, "h": 1, "loot": false, "room": rooms[k]["type"]})
+			furniture.append({"t": t, "x": i % w, "y": i / w, "w": 1, "h": 1, "o": "c", "loot": false, "room": rooms[k]["type"]})
 
 
 ## Toit au-dessus de cette case ? (pas au-dessus des portes extérieures : une encoche les signale)

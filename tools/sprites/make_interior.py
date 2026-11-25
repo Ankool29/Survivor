@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT = os.path.join(ROOT, "game/assets/interieur")
-WALL_H = 24
+WALL_H = 32
 S = 16
 
 
@@ -125,13 +125,13 @@ def wall_face(mat, r):
 def window(im, mat):
     d = ImageDraw.Draw(im)
     frame = (210, 206, 196, 255) if mat != "bois" else (150, 120, 84, 255)
-    d.rectangle([2, 5, 13, 17], fill=frame)
-    d.rectangle([3, 6, 12, 16], fill=(58, 76, 92, 255))
-    d.line([3, 6, 7, 6], fill=(140, 170, 190, 255))
-    d.line([3, 7, 5, 7], fill=(110, 140, 160, 255))
-    d.line([8, 6, 8, 16], fill=frame)
-    d.line([3, 11, 12, 11], fill=frame)
-    d.line([1, 18, 14, 18], fill=(90, 86, 80, 255))      # appui
+    d.rectangle([2, 7, 13, 22], fill=frame)
+    d.rectangle([3, 8, 12, 21], fill=(58, 76, 92, 255))
+    d.line([3, 8, 7, 8], fill=(140, 170, 190, 255))
+    d.line([3, 9, 5, 9], fill=(110, 140, 160, 255))
+    d.line([8, 8, 8, 21], fill=frame)
+    d.line([3, 14, 12, 14], fill=frame)
+    d.line([1, 23, 14, 23], fill=(90, 86, 80, 255))      # appui
     return im
 
 

@@ -30,6 +30,8 @@ var _lazy := {}                       ## id -> [descriptions des murs intérieur
 var _lazy_nodes := {}                 ## id -> [noeuds créés en entrant]
 var _roof_by_plan := {}               ## id -> [cases fines]
 var _furn := {}                       ## morceau -> [{node, plan, idx, rect}]
+var _hidden_roofs: Array = []
+var _inside_rect := Rect2i()
 var _hidden_plan := -1                ## bâtiment dont le toit est masqué
 var _low_plan := -1
 var _low_y := 0.0
@@ -117,6 +119,7 @@ func setup(w: ChunkManager) -> void:
 	roofs = TileMapLayer.new()
 	roofs.name = "ToitsFins"
 	roofs.tile_set = _tileset(ROOF_TEX, 2)
+	roofs.position = Vector2(0, -(wall_h - ChunkManager.ROOF_LIFT))   # le toit repose sur les murs
 	w.roof_root.add_child(roofs)
 
 
@@ -219,7 +222,7 @@ func _defer(pid: int, spec: Dictionary) -> void:
 func _furniture_node(key: Vector2i, p: BuildingPlan, idx: int) -> Sprite2D:
 	var f: Dictionary = p.furniture[idx]
 	var s := Sprite2D.new()
-	var tex := _furniture_tex(String(f["t"]), int(f["w"]), int(f["h"]))
+	var tex := _furniture_tex(String(f["t"]), String(f.get("o", "n")), int(f["w"]), int(f["h"]))
 	s.texture = tex
 	s.centered = false
 	var r := Rect2((p.x + int(f["x"])) * F, (p.y + int(f["y"])) * F, int(f["w"]) * F, int(f["h"]) * F)
@@ -470,12 +473,16 @@ func furniture_ahead(pos: Vector2, facing: Vector2, only_loot := true) -> Dictio
 func set_inside(plan_id: int, player_y: float) -> void:
 	if plan_id != _hidden_plan:
 		if _hidden_plan >= 0:
-			_restore_roof(_hidden_plan)
+			for pid in _hidden_roofs:
+				_restore_roof(pid)
 			_dematerialize(_hidden_plan)
 		_hidden_plan = plan_id
+		_hidden_roofs = _touching(plan_id) if plan_id >= 0 else []
+		for pid in _hidden_roofs:
+			for cell in _roof_by_plan.get(pid, []):
+				if pid == plan_id or _inside_rect.has_point(cell):
+					roofs.erase_cell(cell)
 		if plan_id >= 0:
-			for cell in _roof_by_plan.get(plan_id, []):
-				roofs.erase_cell(cell)
 			_materialize(plan_id)
 	if plan_id != _low_plan or absf(player_y - _low_y) > 4.0:
 		var old := _low_plan
@@ -487,6 +494,28 @@ func set_inside(plan_id: int, player_y: float) -> void:
 					n.low = false
 					n.queue_redraw()
 		_apply_low()
+
+
+## Le bâtiment et ses voisins accolés : le toit d'un voisin peut déborder sur la pièce
+## où l'on est ; on n'en masque que la partie au-dessus de notre bâtiment.
+func _touching(plan_id: int) -> Array:
+	var me: BuildingPlan = null
+	var all := {}
+	for key in _chunks:
+		for p in _chunks[key].plans:
+			all[p.id] = p
+			if p.id == plan_id:
+				me = p
+	if me == null:
+		return [plan_id]
+	var r := Rect2i(me.x - 1, me.y - 1, me.w + 2, me.h + 2)
+	_inside_rect = Rect2i(me.x, me.y, me.w, me.h)
+	var out := [plan_id]
+	for id in all:
+		var q: BuildingPlan = all[id]
+		if id != plan_id and r.intersects(Rect2i(q.x, q.y, q.w, q.h)):
+			out.append(id)
+	return out
 
 
 func _apply_low() -> void:
@@ -529,19 +558,23 @@ const FURN_HEIGHT := {"armoire": 22, "frigo": 20, "etageres": 18, "rayonnage": 1
 	"etagere_livres": 20, "placard": 10, "cheminee": 18, "buffet": 10, "foin": 12, "jeune_arbre": 30}
 
 
-func _furniture_tex(t: String, fw: int, fh: int) -> Texture2D:
-	var k := "%s_%d_%d" % [t, fw, fh]
+## Image d'un meuble selon son orientation : de face (contre le mur nord ou au milieu),
+## de profil tourné vers l'est (mur ouest) ou vers l'ouest (mur est, image retournée).
+func _furniture_tex(t: String, o: String, fw: int, fh: int) -> Texture2D:
+	var k := "%s_%s_%d_%d" % [t, o, fw, fh]
 	if _furn_tex.has(k):
 		return _furn_tex[k]
 	var tex: Texture2D = null
-	var path := FURN_DIR + t + ".png"
-	if ResourceLoader.exists(path):
-		tex = load(path)
-		if fw < fh:
-			# posé contre un mur latéral : on tourne l'image d'un quart de tour
-			var img := tex.get_image()
-			img.rotate_90(CLOCKWISE if (hash(t) & 1) == 0 else COUNTERCLOCKWISE)
-			tex = ImageTexture.create_from_image(img)
+	if o == "w" or o == "e":
+		var side := FURN_DIR + t + "_cote.png"
+		if ResourceLoader.exists(side):
+			tex = load(side)
+			if o == "e":
+				var img := tex.get_image()
+				img.flip_x()
+				tex = ImageTexture.create_from_image(img)
+	if tex == null and ResourceLoader.exists(FURN_DIR + t + ".png"):
+		tex = load(FURN_DIR + t + ".png")
 	if tex == null:
 		tex = _placeholder(t, fw, fh)
 	_furn_tex[k] = tex

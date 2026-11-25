@@ -85,3 +85,9 @@ Les états actuels restent : la plupart des bâtiments intacts, quelques-uns au 
 6. **Sprites** PixelLab : jeux de murs (4 matières), portes, fenêtres, 5 sols, une trentaine de meubles — environ **100 générations** (on resterait vers 620 sur 2 000).
 
 Les étages ne viennent pas encore : un escalier est dessiné mais fermé.
+
+## Retouches (intérieurs façon Project Zomboid)
+
+- Aménagement par type de pièce : meubles adossés aux murs, rangée cuisine continue, table entourée de chaises, cases devant les portes laissées libres.
+- Une pièce coupée en morceaux séparés est scindée ; les miettes rejoignent leur voisine (sinon la pièce restait vide).
+- En entrant, le toit d'un voisin accolé qui déborde sur notre bâtiment est aussi masqué.

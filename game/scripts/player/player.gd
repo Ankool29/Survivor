@@ -7,8 +7,8 @@ const TILE := Tiles.SIZE
 var walk_speed := 4.0 * TILE       ## 4 cases par seconde (réglé selon l'échelle par main.gd)
 const RUN_FACTOR := 1.7
 const SLOW_FACTOR := 0.55
-const HALF_W := 7.0
-const HEIGHT := 6.0
+const HALF_W := 5.0
+const HEIGHT := 4.0
 
 var world: ChunkManager
 var input_vector := Vector2.ZERO    ## fourni par le joystick
@@ -117,7 +117,7 @@ func set_sleeping(on: bool) -> void:
 		_sprite.pause()
 		_sprite.centered = true
 		_sprite.rotation = -PI / 2.0
-		_sprite.position = Vector2(0, -10)
+		_sprite.position = Vector2(0, -6)
 		_sprite.modulate = Color(0.85, 0.85, 0.9)
 	else:
 		_action = ""
@@ -196,7 +196,7 @@ func _try_move(step: Vector2) -> void:
 		return
 	# murs fins des bâtiments détaillés : les coins du pied ne traversent pas un mur
 	if world.interiors:
-		for o in [Vector2(-5, -3), Vector2(5, -3), Vector2(-5, 1), Vector2(5, 1)]:
+		for o in [Vector2(-4, -2), Vector2(4, -2), Vector2(-4, 1), Vector2(4, 1)]:
 			if world.move_blocked(position + o, target + o):
 				return
 	position = target
@@ -223,7 +223,7 @@ func blocked(p: Vector2) -> bool:
 func _draw() -> void:
 	if _sprite:
 		draw_set_transform(Vector2(0, -2), 0.0, Vector2(1.0, 0.45))
-		draw_circle(Vector2.ZERO, 10, Color(0, 0, 0, 0.28))
+		draw_circle(Vector2.ZERO, 7, Color(0, 0, 0, 0.28))
 		return
 	var bob := sin(_anim) * 1.5 if moving else 0.0
 	draw_set_transform(Vector2.ZERO)

@@ -5,7 +5,7 @@ const ZONE := "quimperle"
 const ZONE_FILE := "user://zone.txt"
 const SAVE_FILE := "user://partie.json"
 const ZOOM_MIN := 1.0
-const ZOOM_MAX := 4.0
+const ZOOM_MAX := 6.0
 const SLEEP_SPEED := 60.0        ## en dormant : 1 s réelle = 1 h de jeu
 const AUTOSAVE_S := 120.0
 
@@ -71,7 +71,7 @@ func _ready() -> void:
 	player.walk_speed = clampf(5.0 / zone.cell_m, 2.5, 4.0) * Tiles.SIZE
 	world.entities.add_child(player)
 	camera = Camera2D.new()
-	camera.zoom = Vector2(2, 2)
+	camera.zoom = Vector2(2.8, 2.8)
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 8.0
 	camera.limit_left = 0
@@ -551,7 +551,7 @@ func _aim_dir() -> Vector2:
 	var t := fauna.aim_target(player.position, player.facing)
 	if t:
 		# on vise un peu devant une bête qui court
-		var start := player.position + Vector2(0, -12)
+		var start := player.position + Vector2(0, -9)
 		var lead := start.distance_to(t.body_center()) / (Fauna.ARROW_SPEED * Tiles.SIZE)
 		return (t.body_center() + t.vel * lead - start).normalized()
 	return player.facing.normalized()
@@ -561,7 +561,7 @@ func _update_aim() -> void:
 	if not player.aiming:
 		_aim_line.visible = false
 		return
-	var start := player.position + Vector2(0, -12)
+	var start := player.position + Vector2(0, -9)
 	var t := fauna.aim_target(player.position, player.facing)
 	var end := start + _aim_dir() * Fauna.ARROW_RANGE * Tiles.SIZE
 	if t:

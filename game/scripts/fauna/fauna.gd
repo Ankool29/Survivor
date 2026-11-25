@@ -481,7 +481,7 @@ func aim_target(pos: Vector2, facing: Vector2) -> Animal:
 	for a in animals:
 		if a.is_dead():
 			continue
-		var v := a.body_center() - (pos + Vector2(0, -12))
+		var v := a.body_center() - (pos + Vector2(0, -9))
 		var d := v.length() / Tiles.SIZE
 		if d > ARROW_RANGE:
 			continue
@@ -502,7 +502,7 @@ func shoot(pos: Vector2, dir: Vector2, damage: float) -> void:
 	node.rotation = dir.angle() + PI / 4.0
 	node.z_index = 5
 	world.add_child(node)
-	var start := pos + Vector2(0, -12)
+	var start := pos + Vector2(0, -9)
 	node.position = start
 	_arrows.append({"pos": start, "dir": dir.normalized(), "left": ARROW_RANGE * Tiles.SIZE, "node": node, "dmg": damage})
 

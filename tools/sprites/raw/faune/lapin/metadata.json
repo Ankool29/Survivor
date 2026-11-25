@@ -1,19 +1,19 @@
 {
-  "group_id": "ef09e990-39c6-4ac7-a9b4-6aaa6f8416fb",
+  "group_id": "675e0d95-0ced-4ea3-885f-dd6a926f3e0d",
   "states": [
     {
       "character": {
-        "id": "1de62d73-76df-4200-b719-58aab8157b76",
+        "id": "618fb484-3940-4c86-a9f6-1b5de0a8d0ab",
         "name": "Idle",
         "prompt": "wild brown European rabbit, small, long ears, fluffy white tail, natural muted fur colors",
         "size": {
-          "width": 40,
-          "height": 40
+          "width": 24,
+          "height": 24
         },
         "template_id": "cat",
         "directions": 4,
         "view": "low top-down",
-        "created_at": "2026-11-22T19:15:21.291410+00:00"
+        "created_at": "2026-11-25T06:29:57.042860+00:00"
       },
       "folder": "Idle",
       "frames": {
@@ -34,15 +34,6 @@
               "Idle/animations/course/south/frame_005.png",
               "Idle/animations/course/south/frame_006.png"
             ],
-            "north": [
-              "Idle/animations/course/north/frame_000.png",
-              "Idle/animations/course/north/frame_001.png",
-              "Idle/animations/course/north/frame_002.png",
-              "Idle/animations/course/north/frame_003.png",
-              "Idle/animations/course/north/frame_004.png",
-              "Idle/animations/course/north/frame_005.png",
-              "Idle/animations/course/north/frame_006.png"
-            ],
             "east": [
               "Idle/animations/course/east/frame_000.png",
               "Idle/animations/course/east/frame_001.png",
@@ -51,6 +42,15 @@
               "Idle/animations/course/east/frame_004.png",
               "Idle/animations/course/east/frame_005.png",
               "Idle/animations/course/east/frame_006.png"
+            ],
+            "north": [
+              "Idle/animations/course/north/frame_000.png",
+              "Idle/animations/course/north/frame_001.png",
+              "Idle/animations/course/north/frame_002.png",
+              "Idle/animations/course/north/frame_003.png",
+              "Idle/animations/course/north/frame_004.png",
+              "Idle/animations/course/north/frame_005.png",
+              "Idle/animations/course/north/frame_006.png"
             ]
           },
           "marche": {
@@ -63,15 +63,6 @@
               "Idle/animations/marche/south/frame_005.png",
               "Idle/animations/marche/south/frame_006.png"
             ],
-            "east": [
-              "Idle/animations/marche/east/frame_000.png",
-              "Idle/animations/marche/east/frame_001.png",
-              "Idle/animations/marche/east/frame_002.png",
-              "Idle/animations/marche/east/frame_003.png",
-              "Idle/animations/marche/east/frame_004.png",
-              "Idle/animations/marche/east/frame_005.png",
-              "Idle/animations/marche/east/frame_006.png"
-            ],
             "north": [
               "Idle/animations/marche/north/frame_000.png",
               "Idle/animations/marche/north/frame_001.png",
@@ -80,6 +71,15 @@
               "Idle/animations/marche/north/frame_004.png",
               "Idle/animations/marche/north/frame_005.png",
               "Idle/animations/marche/north/frame_006.png"
+            ],
+            "east": [
+              "Idle/animations/marche/east/frame_000.png",
+              "Idle/animations/marche/east/frame_001.png",
+              "Idle/animations/marche/east/frame_002.png",
+              "Idle/animations/marche/east/frame_003.png",
+              "Idle/animations/marche/east/frame_004.png",
+              "Idle/animations/marche/east/frame_005.png",
+              "Idle/animations/marche/east/frame_006.png"
             ]
           }
         }
@@ -87,5 +87,5 @@
     }
   ],
   "export_version": "3.1",
-  "export_date": "2026-11-22T19:37:34.161156"
+  "export_date": "2026-11-25T06:46:57.234031"
 }
