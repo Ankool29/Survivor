@@ -2,7 +2,16 @@
 
 Objectif : des bâtiments dont la forme et les dimensions suivent les mesures réelles (contours du cadastre via OpenStreetMap), avec des murs fins, de vraies portes et fenêtres, et des pièces crédibles meublées. C'est aussi la base du réaménagement et de la construction par le joueur : les murs du joueur seront les mêmes.
 
-Statut : **proposition, à valider**.
+Statut : **validé et intégré** (précision 1 m, murs abaissés quand on est dedans, étages plus tard).
+
+Ce qui a été fait, et les écarts :
+- **Orientation** : la grille est droite, donc chaque bâtiment est tourné sur son propre axe (autour de son centre) ; forme et dimensions sont gardées, seule l'orientation change. Les maisons mitoyennes redressées chacune de leur côté sont recollées (fentes d'un mètre bouchées).
+- **Données** : 291 000 bâtiments détaillés sur la zone (emprise au mètre, type, rue la plus proche), dans `tiles/<tx>_<ty>.bld.json.gz`.
+- **Plans** : maison, longère, immeuble, commerce, hangar, grange, annexe, bâtiment public, église ; portes extérieures côté rue (et porte de service), portes intérieures, fenêtres, sols par pièce. Fabriqués dans le jeu, toujours les mêmes pour un bâtiment donné.
+- **Textures** : sols, murs (enduit, granit, parpaing, bois), portes, fenêtres et toits au mètre dessinés par programme (`tools/sprites/make_interior.py`) ; 35 meubles PixelLab.
+- **Meubles** : posés contre les murs en gardant un passage ; ils bloquent le passage ; ceux à fouiller ont leur butin selon le meuble (frigo, armoire, armoire à pharmacie, établi, rayons selon le commerce…).
+- **Affichage** : sous un toit intact, les murs intérieurs et les meubles ne sont créés qu'en entrant (beaucoup moins de travail pour le téléphone).
+- **Pas encore** : les seuils de porte dehors (remplacés par l'encoche dans le toit au-dessus des portes), le démontage, les étages.
 
 ## 1. Ce qui change par rapport à aujourd'hui
 
@@ -76,9 +85,3 @@ Les états actuels restent : la plupart des bâtiments intacts, quelques-uns au 
 6. **Sprites** PixelLab : jeux de murs (4 matières), portes, fenêtres, 5 sols, une trentaine de meubles — environ **100 générations** (on resterait vers 620 sur 2 000).
 
 Les étages ne viennent pas encore : un escalier est dessiné mais fermé.
-
-## 9. Questions ouvertes
-
-1. Précision de 1 m à l'intérieur des bâtiments (recommandé), ou 50 cm (plus fidèle, mais quatre fois plus de cases et des murs plus difficiles à dessiner) ?
-2. Murs devant le joueur abaissés quand on est dedans (recommandé), ou rendus semi-transparents ?
-3. Étages : plus tard (recommandé), ou dès cette étape ?

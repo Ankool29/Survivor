@@ -54,6 +54,7 @@ class ChunkData:
 	var fedge := PackedByteArray()     ## bord nord (bits 0-3) et ouest (bits 4-7) de la case fine
 	var feowner := PackedInt32Array()  ## plan du bord nord (bits 0-15) et ouest (16-31), 0xFFFF aucun
 	var furn: Array = []               ## [plan index, meuble index] dont l'origine est ici
+	var fblock := PackedByteArray()    ## 1 si un meuble occupe la case fine
 
 
 func _init(z: ZoneData, s: int) -> void:
@@ -193,6 +194,7 @@ func _fine(c: ChunkData, x0: int, y0: int) -> void:
 	c.fedge.resize(n)
 	c.feowner.resize(n)
 	c.feowner.fill(-1)
+	c.fblock.resize(n)
 	var rect := Rect2i(fx0, fy0, FINE, FINE)
 	for rec in zone.buildings_in(rect):
 		var p := BuildingPlan.of(rec)
@@ -233,6 +235,12 @@ func _fine(c: ChunkData, x0: int, y0: int) -> void:
 			var fy: int = p.y + int(f["y"])
 			if rect.has_point(Vector2i(fx, fy)):
 				c.furn.append([pi, k])
+			if f["t"] in ["gravats", "broussailles"]:
+				continue
+			for yy in range(fy, fy + int(f["h"])):
+				for xx in range(fx, fx + int(f["w"])):
+					if rect.has_point(Vector2i(xx, yy)):
+						c.fblock[(yy - fy0) * FINE + xx - fx0] = 1
 
 
 func _put(c: ChunkData, lx: int, ly: int, g: int, variant: int) -> void:

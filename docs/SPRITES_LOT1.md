@@ -92,4 +92,13 @@ Coût du lot 2 : environ 35 générations. Total depuis le début : environ 350 
 | 34 icônes (vêtements trouvés et fabriqués, cuir, fourrures, cendres, aiguille, fil, nécessaire, grattoir) | intégrées | une planche de 64 |
 | Cadre de séchage vide, avec une peau, avec un cuir en tannage | intégrés | une planche de 16 |
 
-Total depuis le début : 520 générations sur 2 000 (limite fixée : 1 600).
+
+# Lot de sprites 6 — Bâtiments détaillés
+
+| Élément | Statut | Notes |
+| --- | --- | --- |
+| 18 petits meubles (1 m : poêle, évier, frigo, WC, commode…) | intégrés | une planche en 16 px |
+| 17 grands meubles (2 m : lit, armoire, canapé, établi, rayonnage, cheminée…) | intégrés | une planche en 32 px ; tournés d'un quart de tour contre les murs latéraux |
+| Sols, murs, portes, fenêtres, toits au mètre | dessinés par programme | `tools/sprites/make_interior.py`, sans génération |
+
+Total depuis le début : 540 générations sur 2 000 (limite fixée : 1 600).

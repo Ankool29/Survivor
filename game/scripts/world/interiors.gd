@@ -26,7 +26,8 @@ var _furn_tex := {}
 var _chunks := {}                     ## morceau -> ChunkData
 var _nodes := {}                      ## morceau -> [noeuds]
 var _walls_by_plan := {}              ## id de bâtiment -> [WallNode]
-var _inner_by_plan := {}              ## id -> [murs intérieurs et meubles] (cachés sous le toit)
+var _lazy := {}                       ## id -> [descriptions des murs intérieurs et meubles] (sous un toit)
+var _lazy_nodes := {}                 ## id -> [noeuds créés en entrant]
 var _roof_by_plan := {}               ## id -> [cases fines]
 var _furn := {}                       ## morceau -> [{node, plan, idx, rect}]
 var _hidden_plan := -1                ## bâtiment dont le toit est masqué
@@ -44,7 +45,6 @@ class WallNode extends Node2D:
 	var mat := 0
 	var plan_id := -1
 	var low := false
-	var inner := false                ## mur entre deux pièces (caché quand le toit est là)
 	var end_face := false             ## vertical : face visible en bas (fin de mur)
 
 	func _draw() -> void:
@@ -176,10 +176,11 @@ func add_chunk(key: Vector2i, c: WorldGen.ChunkData) -> void:
 					and _inner_edge(c, pi, fx0 + lx, fy0 + ly, "n") == inner:
 				run.append(c.fedge[ly * FINE + lx] & 0x0F)
 				lx += 1
-			var wn := _wall_node(c, pi, false, fx0 + start, fy0 + ly, run, false)
-			wn.inner = inner
-			_register_inner(wn)
-			nodes.append(wn)
+			var ph: BuildingPlan = c.plans[pi] if pi >= 0 and pi < c.plans.size() else null
+			if inner and ph and ph.state == 0:
+				_defer(ph.id, {"key": key, "k": "h", "p": ph, "fx": fx0 + start, "fy": fy0 + ly, "codes": run})
+			else:
+				nodes.append(_wall_node(ph, false, fx0 + start, fy0 + ly, run, false))
 	# murs verticaux : un noeud par mètre (pour bien passer devant ou derrière le joueur)
 	for ly in FINE:
 		for lx in FINE:
@@ -190,35 +191,89 @@ func add_chunk(key: Vector2i, c: WorldGen.ChunkData) -> void:
 			var pi := (c.feowner[i] >> 16) & 0xFFFF
 			var below := edge_code(fx0 + lx, fy0 + ly + 1, "w")
 			var end := below == 0 or below == BuildingPlan.E_BREACH
-			var vn := _wall_node(c, pi, true, fx0 + lx, fy0 + ly, PackedByteArray([code]), end)
-			vn.inner = _inner_edge(c, pi, fx0 + lx, fy0 + ly, "w")
-			_register_inner(vn)
-			nodes.append(vn)
-	# meubles
-	var furn: Array = []
+			var pv: BuildingPlan = c.plans[pi] if pi >= 0 and pi < c.plans.size() else null
+			if pv and pv.state == 0 and _inner_edge(c, pi, fx0 + lx, fy0 + ly, "w"):
+				_defer(pv.id, {"key": key, "k": "v", "p": pv, "fx": fx0 + lx, "fy": fy0 + ly, "codes": PackedByteArray([code]), "end": end})
+			else:
+				nodes.append(_wall_node(pv, true, fx0 + lx, fy0 + ly, PackedByteArray([code]), end))
+	# meubles : sous un toit intact, créés seulement quand on entre
+	_furn[key] = []
 	for e in c.furn:
 		var p: BuildingPlan = c.plans[e[0]]
-		var f: Dictionary = p.furniture[e[1]]
-		var s := Sprite2D.new()
-		var tex := _furniture_tex(String(f["t"]), int(f["w"]), int(f["h"]))
-		s.texture = tex
-		s.centered = false
-		var r := Rect2((p.x + int(f["x"])) * F, (p.y + int(f["y"])) * F, int(f["w"]) * F, int(f["h"]) * F)
-		s.position = Vector2(r.position.x, r.end.y)
-		s.offset = Vector2((r.size.x - tex.get_width()) / 2.0, -tex.get_height())
-		world.entities.add_child(s)
-		nodes.append(s)
-		s.set_meta("plan", p.id)
-		s.set_meta("roofed", p.state == 0)
-		_register_inner(s)
-		furn.append({"node": s, "plan": p, "idx": e[1], "rect": r})
-	_furn[key] = furn
+		if p.state == 0:
+			_defer(p.id, {"key": key, "k": "f", "p": p, "idx": e[1]})
+		else:
+			nodes.append(_furniture_node(key, p, e[1]))
 	_nodes[key] = nodes
+	if _lazy_nodes.has(_hidden_plan):
+		_materialize(_hidden_plan)
 	_apply_low()
 
 
-func _wall_node(c: WorldGen.ChunkData, pi: int, vertical: bool, fx: int, fy: int, codes: PackedByteArray, end: bool) -> WallNode:
-	var p: BuildingPlan = c.plans[pi] if pi >= 0 and pi < c.plans.size() else null
+func _defer(pid: int, spec: Dictionary) -> void:
+	if not _lazy.has(pid):
+		_lazy[pid] = []
+	_lazy[pid].append(spec)
+
+
+func _furniture_node(key: Vector2i, p: BuildingPlan, idx: int) -> Sprite2D:
+	var f: Dictionary = p.furniture[idx]
+	var s := Sprite2D.new()
+	var tex := _furniture_tex(String(f["t"]), int(f["w"]), int(f["h"]))
+	s.texture = tex
+	s.centered = false
+	var r := Rect2((p.x + int(f["x"])) * F, (p.y + int(f["y"])) * F, int(f["w"]) * F, int(f["h"]) * F)
+	s.position = Vector2(r.position.x, r.end.y)
+	s.offset = Vector2((r.size.x - tex.get_width()) / 2.0, -tex.get_height())
+	world.entities.add_child(s)
+	if not _furn.has(key):
+		_furn[key] = []
+	_furn[key].append({"node": s, "plan": p, "idx": idx, "rect": r})
+	return s
+
+
+## Crée les murs intérieurs et les meubles d'un bâtiment (on vient d'y entrer).
+func _materialize(pid: int) -> void:
+	var made: Array = _lazy_nodes.get(pid, [])
+	var done := {}
+	for n in made:
+		done[n.get_meta("spec")] = true
+	for i in _lazy.get(pid, []).size():
+		var spec: Dictionary = _lazy[pid][i]
+		if done.has(spec):
+			continue
+		var n: Node2D
+		match spec["k"]:
+			"h":
+				n = _wall_node(spec["p"], false, spec["fx"], spec["fy"], spec["codes"], false)
+			"v":
+				n = _wall_node(spec["p"], true, spec["fx"], spec["fy"], spec["codes"], spec["end"])
+			"f":
+				n = _furniture_node(spec["key"], spec["p"], spec["idx"])
+		n.set_meta("spec", spec)
+		made.append(n)
+	_lazy_nodes[pid] = made
+
+
+func _dematerialize(pid: int) -> void:
+	for n in _lazy_nodes.get(pid, []):
+		_forget(n)
+		n.queue_free()
+	_lazy_nodes.erase(pid)
+
+
+func _forget(n: Node2D) -> void:
+	if n is WallNode and _walls_by_plan.has(n.plan_id):
+		_walls_by_plan[n.plan_id].erase(n)
+	elif n is Sprite2D:
+		for key in _furn:
+			var lst: Array = _furn[key]
+			for j in range(lst.size() - 1, -1, -1):
+				if lst[j]["node"] == n:
+					lst.remove_at(j)
+
+
+func _wall_node(p: BuildingPlan, vertical: bool, fx: int, fy: int, codes: PackedByteArray, end: bool) -> WallNode:
 	var n := WallNode.new()
 	n.owner_i = self
 	n.vertical = vertical
@@ -228,8 +283,6 @@ func _wall_node(c: WorldGen.ChunkData, pi: int, vertical: bool, fx: int, fy: int
 	n.end_face = end
 	n.mat = maxi(0, _mats.find(p.material)) if p else 0
 	n.plan_id = p.id if p else -1
-	if p:
-		_roofed[p.id] = p.state == 0
 	n.position = Vector2(fx * F, (fy + 1) * F) if vertical else Vector2(fx * F, fy * F)
 	world.entities.add_child(n)
 	if not _walls_by_plan.has(n.plan_id):
@@ -248,29 +301,6 @@ func _inner_edge(c: WorldGen.ChunkData, pi: int, fx: int, fy: int, side: String)
 	return p.cell_in(a.x, a.y) and p.cell_in(b.x, b.y)
 
 
-## Murs intérieurs et meubles : cachés sous un toit intact, sauf dans le bâtiment où l'on est.
-func _register_inner(n: Node2D) -> void:
-	var pid: int
-	var roofed: bool
-	if n is WallNode:
-		if not n.inner:
-			return
-		pid = n.plan_id
-		roofed = _roofed.get(pid, true)
-	else:
-		pid = n.get_meta("plan")
-		roofed = n.get_meta("roofed")
-	if not roofed:
-		return
-	if not _inner_by_plan.has(pid):
-		_inner_by_plan[pid] = []
-	_inner_by_plan[pid].append(n)
-	n.visible = pid == _hidden_plan
-
-
-var _roofed := {}
-
-
 func remove_chunk(key: Vector2i) -> void:
 	var c: WorldGen.ChunkData = _chunks.get(key)
 	if c == null:
@@ -286,12 +316,22 @@ func remove_chunk(key: Vector2i) -> void:
 		if _roof_by_plan.has(p.id):
 			_roof_by_plan[p.id] = _roof_by_plan[p.id].filter(func(cell): return cell.x < fx0 or cell.y < fy0 or cell.x >= fx0 + FINE or cell.y >= fy0 + FINE)
 	for n in _nodes.get(key, []):
-		if n is WallNode and _walls_by_plan.has(n.plan_id):
-			_walls_by_plan[n.plan_id].erase(n)
-		var pid: int = n.plan_id if n is WallNode else int(n.get_meta("plan", -1))
-		if _inner_by_plan.has(pid):
-			_inner_by_plan[pid].erase(n)
+		_forget(n)
 		n.queue_free()
+	# descriptions et noeuds différés de ce morceau
+	for pid in _lazy.keys():
+		_lazy[pid] = _lazy[pid].filter(func(sp): return sp["key"] != key)
+		if _lazy_nodes.has(pid):
+			var keep: Array = []
+			for n in _lazy_nodes[pid]:
+				if n.get_meta("spec")["key"] == key:
+					_forget(n)
+					n.queue_free()
+				else:
+					keep.append(n)
+			_lazy_nodes[pid] = keep
+		if _lazy[pid].is_empty():
+			_lazy.erase(pid)
 	_nodes.erase(key)
 	_furn.erase(key)
 	_chunks.erase(key)
@@ -302,6 +342,8 @@ func clear() -> void:
 		remove_chunk(key)
 	_hidden_plan = -1
 	_low_plan = -1
+	_lazy.clear()
+	_lazy_nodes.clear()
 
 
 # --- Lecture de la grille fine -----------------------------------------------------------
@@ -340,11 +382,17 @@ func _blocks(fx: int, fy: int, side: String) -> bool:
 
 
 ## Vrai si aller de a à b (en pixels, petit pas) traverse un mur, une fenêtre ou une porte fermée.
-func move_blocked(a: Vector2, b: Vector2) -> bool:
+func move_blocked(a: Vector2, b: Vector2, furniture := true) -> bool:
 	var fa := Vector2i(floori(a.x / F), floori(a.y / F))
 	var fb := Vector2i(floori(b.x / F), floori(b.y / F))
 	if fa == fb:
 		return false
+	# meubles : on ne marche pas dessus
+	var cb := _chunk_of(fb.x, fb.y)
+	if furniture and cb and cb.fblock.size() > 0 and cb.fblock[posmod(fb.y, FINE) * FINE + posmod(fb.x, FINE)] == 1:
+		var ca := _chunk_of(fa.x, fa.y)
+		if not (ca and ca.fblock[posmod(fa.y, FINE) * FINE + posmod(fa.x, FINE)] == 1):
+			return true
 	if fa.x != fb.x and _blocks(maxi(fa.x, fb.x), fa.y, "w"):
 		return true
 	if fa.y != fb.y and _blocks(fb.x, maxi(fa.y, fb.y), "n"):
@@ -410,7 +458,7 @@ func furniture_ahead(pos: Vector2, facing: Vector2, only_loot := true) -> Dictio
 			var r: Rect2 = e["rect"]
 			var q := Vector2(clampf(probe.x, r.position.x, r.end.x), clampf(probe.y, r.position.y, r.end.y))
 			var d := q.distance_to(probe)
-			if d < bd and not move_blocked(pos + Vector2(0, -2), q.move_toward(pos, 1.0)):
+			if d < bd and not move_blocked(pos + Vector2(0, -2), q.move_toward(pos, 1.0), false):
 				bd = d
 				var p: BuildingPlan = e["plan"]
 				best = {"plan": p, "idx": e["idx"], "f": p.furniture[e["idx"]], "rect": r}
@@ -423,14 +471,12 @@ func set_inside(plan_id: int, player_y: float) -> void:
 	if plan_id != _hidden_plan:
 		if _hidden_plan >= 0:
 			_restore_roof(_hidden_plan)
-			for n in _inner_by_plan.get(_hidden_plan, []):
-				n.visible = false
+			_dematerialize(_hidden_plan)
 		_hidden_plan = plan_id
 		if plan_id >= 0:
 			for cell in _roof_by_plan.get(plan_id, []):
 				roofs.erase_cell(cell)
-			for n in _inner_by_plan.get(plan_id, []):
-				n.visible = true
+			_materialize(plan_id)
 	if plan_id != _low_plan or absf(player_y - _low_y) > 4.0:
 		var old := _low_plan
 		_low_plan = plan_id
