@@ -44,6 +44,9 @@ var cell_m := 31.25
 
 # --- Zone en tuiles (grandes zones à l'échelle réelle)
 var tiled := false
+var detailed := false           ## bâtiments détaillés (murs fins, pièces : docs/BATIMENTS2.md)
+var _bld_recs := {}             ## tuile -> fiches des bâtiments détaillés
+var _bld_mutex := Mutex.new()
 var tile := 0                   ## côté d'une tuile, en cases
 var tiles_x := 0
 var tiles_y := 0
@@ -79,6 +82,7 @@ static func load_zone(zone_name: String) -> ZoneData:
 	z.sources = meta.get("sources", [])
 	var n := z.width * z.height
 	z.real = meta.get("mode", "") == "reel"
+	z.detailed = bool(meta.get("detailed_buildings", false))
 	z.cell_m = float(meta.get("cell_m", 31.25))
 	z._dir = dir
 	if meta.has("tile"):
@@ -151,6 +155,45 @@ func _get_tile(tx: int, ty: int) -> Array:
 		_tile_age.erase(oldest)
 	_mutex.unlock()
 	return t
+
+
+## Fiches des bâtiments détaillés dont l'emprise (grille fine, 1 m) touche ce rectangle.
+func buildings_in(fine: Rect2i) -> Array:
+	var out := []
+	if not detailed:
+		return out
+	var ft := tile * 2
+	var t0 := Vector2i(floori(float(fine.position.x) / ft) - 1, floori(float(fine.position.y) / ft) - 1)
+	var t1 := Vector2i(floori(float(fine.end.x) / ft), floori(float(fine.end.y) / ft))
+	for ty in range(t0.y, t1.y + 1):
+		for tx in range(t0.x, t1.x + 1):
+			for r in _tile_buildings(tx, ty):
+				if Rect2i(int(r["x"]), int(r["y"]), int(r["w"]), int(r["h"])).intersects(fine):
+					out.append(r)
+	return out
+
+
+func _tile_buildings(tx: int, ty: int) -> Array:
+	var key := Vector2i(tx, ty)
+	_bld_mutex.lock()
+	if _bld_recs.has(key):
+		var a: Array = _bld_recs[key]
+		_bld_mutex.unlock()
+		return a
+	_bld_mutex.unlock()
+	var recs: Array = []
+	var path := "%stiles/%d_%d.bld.json.gz" % [_dir, tx, ty]
+	if tx >= 0 and ty >= 0 and FileAccess.file_exists(path):
+		var raw := FileAccess.get_file_as_bytes(path).decompress_dynamic(-1, FileAccess.COMPRESSION_GZIP)
+		var parsed = JSON.parse_string(raw.get_string_from_utf8())
+		if parsed is Array:
+			recs = parsed
+	_bld_mutex.lock()
+	if _bld_recs.size() > 40:
+		_bld_recs.clear()
+	_bld_recs[key] = recs
+	_bld_mutex.unlock()
+	return recs
 
 
 func _tiled_at(x: int, y: int, layer: int, outside: int) -> int:

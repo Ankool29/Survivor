@@ -96,19 +96,21 @@ def align_clusters(geoms):
         groups.setdefault(find(i), []).append(i)
     out = list(geoms)
     for members in groups.values():
-        big = max(members, key=lambda k: geoms[k].area)
-        try:
-            rect = geoms[big].simplify(0.6, preserve_topology=True).minimum_rotated_rectangle
-            xs, ys = rect.exterior.coords.xy
-            ang = np.degrees(np.arctan2(ys[1] - ys[0], xs[1] - xs[0]))
-            ang = (ang + 45.0) % 90.0 - 45.0
-            if abs(ang) < 0.5:
-                continue
-            c = shapely.union_all([geoms[k] for k in members]).centroid
-            for k in members:
-                out[k] = shapely.affinity.rotate(geoms[k].simplify(0.3, preserve_topology=True), -ang, origin=c)
-        except Exception:
-            pass
+        c = shapely.union_all([geoms[k] for k in members]).centroid
+        for k in members:
+            # chaque bâtiment redressé sur son propre axe (autour de son centre) : en ville,
+            # les rangées suivent des rues courbes, un angle commun ferait des escaliers
+            try:
+                g = geoms[k].simplify(0.3, preserve_topology=True)
+                rect = g.minimum_rotated_rectangle
+                xs, ys = rect.exterior.coords.xy
+                ang = np.degrees(np.arctan2(ys[1] - ys[0], xs[1] - xs[0]))
+                ang = (ang + 45.0) % 90.0 - 45.0
+                if abs(ang) >= 0.5:
+                    g = shapely.affinity.rotate(g, -ang, origin=g.centroid)
+                out[k] = g
+            except Exception:
+                pass
     return out, groups
 
 
@@ -258,6 +260,17 @@ def build(cfg, src, out):
         lab = np.zeros((fh, fw), np.int32)
         order = sorted(members, key=lambda k: -bld_geoms[k].area)
         features.rasterize([(bld_geoms[k], n + 1) for n, k in enumerate(order)], out=lab, transform=tr)
+        # bâtiments mitoyens redressés chacun de leur côté : on bouche les fentes d'un mètre
+        for _ in range(2):
+            gap = lab == 0
+            left = np.roll(lab, 1, 1)
+            right = np.roll(lab, -1, 1)
+            up = np.roll(lab, 1, 0)
+            down = np.roll(lab, -1, 0)
+            fill_h = gap & (left > 0) & (right > 0)
+            fill_v = gap & (up > 0) & (down > 0)
+            lab[fill_h] = left[fill_h]
+            lab[fill_v & ~fill_h] = up[fill_v & ~fill_h]
         for n, k in enumerate(order):
             m = lab == n + 1
             if m.sum() < 4:

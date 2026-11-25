@@ -192,8 +192,14 @@ func _process(delta: float) -> void:
 
 func _try_move(step: Vector2) -> void:
 	var target := position + step
-	if not blocked(target):
-		position = target
+	if blocked(target):
+		return
+	# murs fins des bâtiments détaillés : les coins du pied ne traversent pas un mur
+	if world.interiors:
+		for o in [Vector2(-5, -3), Vector2(5, -3), Vector2(-5, 1), Vector2(5, 1)]:
+			if world.move_blocked(position + o, target + o):
+				return
+	position = target
 
 
 ## Vrai si les pieds posés en p touchent un obstacle.

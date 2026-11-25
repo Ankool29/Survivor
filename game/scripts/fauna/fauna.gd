@@ -141,6 +141,8 @@ func walkable(p: Vector2, a: Animal) -> bool:
 		return false
 	if not world.is_loaded(c):
 		return zone.b_at(c.x, c.y) == 0
+	if world.interiors and world.move_blocked(a.position, p):
+		return false
 	var f := world.flags_at(c)
 	if f & WorldGen.F_BLOCK:
 		return false

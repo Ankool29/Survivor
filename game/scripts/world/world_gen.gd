@@ -46,6 +46,14 @@ class ChunkData:
 	var dual: Array = []               ## tuiles de transition précalculées (ChunkManager)
 	var roof: Array = []               ## tuiles de toit précalculées, par type de toit
 	var buildings: Array = []          # {rect: Rect2i (cases monde), kind: String, name: String}
+	## Bâtiments détaillés (grille fine : 1 case = 2 x 2), FINE x FINE à partir de (2*x0, 2*y0)
+	var plans: Array = []              ## BuildingPlan qui touchent ce morceau
+	var fplan := PackedInt32Array()    ## index dans plans, -1 dehors
+	var froom := PackedInt32Array()    ## pièce dans le plan
+	var ffloor := PackedByteArray()    ## sol + 1 (0 : aucun)
+	var fedge := PackedByteArray()     ## bord nord (bits 0-3) et ouest (bits 4-7) de la case fine
+	var feowner := PackedInt32Array()  ## plan du bord nord (bits 0-15) et ouest (16-31), 0xFFFF aucun
+	var furn: Array = []               ## [plan index, meuble index] dont l'origine est ici
 
 
 func _init(z: ZoneData, s: int) -> void:
@@ -133,6 +141,8 @@ func generate(cx: int, cy: int) -> ChunkData:
 	var x0 := cx * CHUNK
 	var y0 := cy * CHUNK
 	_prepare_patch5(x0, y0)
+	if zone.detailed:
+		_fine(c, x0, y0)
 	# 1. sol, voies, eau
 	for ly in CHUNK:
 		for lx in CHUNK:
@@ -168,6 +178,63 @@ func generate(cx: int, cy: int) -> ChunkData:
 	return c
 
 
+const FINE := CHUNK * 2
+
+
+## Bâtiments détaillés de ce morceau : sols, murs, pièces sur la grille fine.
+func _fine(c: ChunkData, x0: int, y0: int) -> void:
+	var fx0 := x0 * 2
+	var fy0 := y0 * 2
+	var n := FINE * FINE
+	c.fplan.resize(n)
+	c.fplan.fill(-1)
+	c.froom.resize(n)
+	c.ffloor.resize(n)
+	c.fedge.resize(n)
+	c.feowner.resize(n)
+	c.feowner.fill(-1)
+	var rect := Rect2i(fx0, fy0, FINE, FINE)
+	for rec in zone.buildings_in(rect):
+		var p := BuildingPlan.of(rec)
+		var pi := c.plans.size()
+		c.plans.append(p)
+		var a := Vector2i(maxi(p.x, fx0), maxi(p.y, fy0))
+		var b := Vector2i(mini(p.x + p.w + 1, fx0 + FINE), mini(p.y + p.h + 1, fy0 + FINE))
+		for fy in range(a.y, b.y):
+			for fx in range(a.x, b.x):
+				var lx := fx - fx0
+				var ly := fy - fy0
+				var i := ly * FINE + lx
+				var px := fx - p.x
+				var py := fy - p.y
+				if px < p.w and py < p.h and p.inside[py * p.w + px] == 1:
+					var r := p.room[py * p.w + px]
+					c.fplan[i] = pi
+					c.froom[i] = r
+					if r >= 0:
+						c.ffloor[i] = int(p.rooms[r]["floor"]) + 1
+				var e := c.fedge[i]
+				var own := c.feowner[i]
+				if px < p.w:
+					var vn := p.en[p.ei(px, py)]
+					if vn != 0:
+						e = (e & 0xF0) | vn
+						own = (own & ~0xFFFF) | pi
+				if py < p.h:
+					var vw := p.ew[p.ei(px, py)]
+					if vw != 0:
+						e = (e & 0x0F) | (vw << 4)
+						own = (own & 0xFFFF) | (pi << 16)
+				c.fedge[i] = e
+				c.feowner[i] = own
+		for k in p.furniture.size():
+			var f: Dictionary = p.furniture[k]
+			var fx: int = p.x + int(f["x"])
+			var fy: int = p.y + int(f["y"])
+			if rect.has_point(Vector2i(fx, fy)):
+				c.furn.append([pi, k])
+
+
 func _put(c: ChunkData, lx: int, ly: int, g: int, variant: int) -> void:
 	c.ground[ly * CHUNK + lx] = g * Tiles.VARIANTS + (variant % Tiles.VARIANTS)
 
@@ -185,6 +252,24 @@ func _cell(c: ChunkData, lx: int, ly: int, x: int, y: int) -> void:
 	# Échelle réelle : vrais bâtiments d'OpenStreetMap
 	var b := zone.bb_at(x, y)
 	var i := ly * CHUNK + lx
+	if zone.detailed:
+		# bâtiments détaillés : murs et meubles sur la grille fine ; ici, pas de grand décor
+		# sur une case touchée par un bâtiment
+		var touched := b != 0
+		if c.fplan.size() > 0:
+			var k0 := (ly * 2) * FINE + lx * 2
+			for k in [k0, k0 + 1, k0 + FINE, k0 + FINE + 1]:
+				if c.fplan[k] >= 0 or c.fedge[k] != 0:
+					touched = true
+		if touched:
+			c.decor[i] = -1
+			c.flags[i] = 0
+			return
+		# lierre et herbes au pied des façades
+		if zone.bb_at(x, y - 1) != 0 and zone.r_at(x, y) == 0 and not zone.is_water(x, y) and (hash_cell(x, y) >> 5) % 100 < 22:
+			c.decor[i] = -1
+			_deco(c, lx, ly, Tiles.D_LIERRE)
+		return
 	if b == 0:
 		# devant une porte : un seuil de pierre puis un bout de chemin, pour la repérer
 		if zone.r_at(x, y) == 0 and not zone.is_water(x, y):

@@ -10,6 +10,7 @@ const REGROW_MIN := 3 * 1440.0   ## une plante repousse en 3 jours
 var harvested := {}
 var searched := {}
 var structures := {}
+var doors := {}                  ## "fx,fy,n|w" -> ouverte ? (bâtiments détaillés)
 
 
 static func key(c: Vector2i) -> String:
@@ -42,6 +43,20 @@ func content_of(c: Vector2i) -> Array:
 	return v if v is Array else []
 
 
+## Meubles des bâtiments détaillés : clé texte ("m<bâtiment>_<meuble>").
+func is_searched_key(k: String) -> bool:
+	return searched.has(k)
+
+
+func mark_searched_key(k: String, content: Array) -> void:
+	searched[k] = content
+
+
+func content_of_key(k: String) -> Array:
+	var v = searched.get(k, [])
+	return v if v is Array else []
+
+
 func structure_at(c: Vector2i) -> Dictionary:
 	return structures.get(key(c), {})
 
@@ -57,7 +72,7 @@ func structures_in(rect: Rect2i) -> Array:
 
 func to_data() -> Dictionary:
 	# On oublie les récoltes déjà repoussées pour garder la sauvegarde légère
-	return {"harvested": harvested, "searched": searched, "structures": structures}
+	return {"harvested": harvested, "searched": searched, "structures": structures, "portes": doors}
 
 
 func from_data(d: Dictionary, now: float) -> void:
@@ -67,3 +82,4 @@ func from_data(d: Dictionary, now: float) -> void:
 			harvested[k] = float(d["harvested"][k])
 	searched = d.get("searched", {})
 	structures = d.get("structures", {})
+	doors = d.get("portes", {})

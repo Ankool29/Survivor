@@ -10,7 +10,12 @@ const TILE := Tiles.SIZE
 
 var zone: ZoneData
 var gen: WorldGen
-var mods: WorldMods            ## changements du joueur (fournis par main.gd)
+var mods: WorldMods:            ## changements du joueur (fournis par main.gd)
+	set(v):
+		mods = v
+		if interiors:
+			interiors.mods = v
+var interiors: Interiors       ## bâtiments détaillés (murs fins, pièces), si la zone en a
 var ground: TileMapLayer
 var shade_root: Node2D
 var entities: Node2D        ## parent trié en Y : décor + joueur
@@ -117,6 +122,10 @@ func setup(z: ZoneData, seed_value: int) -> void:
 	decor.tile_set = ts
 	decor.y_sort_enabled = true
 	entities.add_child(decor)
+	if zone.detailed:
+		interiors = Interiors.new()
+		interiors.setup(self)
+		interiors.mods = mods
 
 
 ## Remet le monde à zéro avec une nouvelle graine (nouvelle partie).
@@ -125,6 +134,8 @@ func reset(seed_value: int) -> void:
 	for key in _chunks.keys():
 		_unload(key)
 	_queue.clear()
+	if interiors:
+		interiors.clear()
 	gen = WorldGen.new(zone, seed_value)
 
 
@@ -146,6 +157,11 @@ func ensure_cell(cell: Vector2i) -> WorldGen.ChunkData:
 
 func is_loaded(cell: Vector2i) -> bool:
 	return _chunks.has(chunk_of_cell(cell))
+
+
+## Bâtiments détaillés : vrai si le pas de a à b traverse un mur ou une porte fermée.
+func move_blocked(a: Vector2, b: Vector2) -> bool:
+	return interiors != null and interiors.move_blocked(a, b)
 
 
 func flags_at(cell: Vector2i) -> int:
@@ -217,7 +233,7 @@ func _generate_in_thread(key: Vector2i, g: WorldGen) -> void:
 	var c := g.generate(key.x, key.y)
 	if _has_base:
 		c.dual = _compute_dual(c, key.x * CHUNK, key.y * CHUNK)
-	if _has_roofs:
+	if _has_roofs and not zone.detailed:
 		c.roof = _compute_roof(key.x * CHUNK, key.y * CHUNK)
 	_task_ms = (Time.get_ticks_usec() - t0) / 1000.0
 	_task_result = c
@@ -244,7 +260,7 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 		if c.dual.is_empty():
 			c.dual = _compute_dual(c, x0, y0)
 		_apply_dual(c)
-	if _has_roofs:
+	if _has_roofs and not zone.detailed:
 		if c.roof.is_empty():
 			c.roof = _compute_roof(x0, y0)
 		for t in c.roof.size():
@@ -280,6 +296,8 @@ func _apply(key: Vector2i, c: WorldGen.ChunkData, gen_ms: float) -> void:
 	shade_root.add_child(s)
 	_shades[key] = s
 	_chunks[key] = c
+	if interiors:
+		interiors.add_chunk(key, c)
 	last_gen_ms = gen_ms
 	max_gen_ms = maxf(max_gen_ms, gen_ms)
 	last_apply_ms = (Time.get_ticks_usec() - t0) / 1000.0
@@ -525,4 +543,6 @@ func _unload(key: Vector2i) -> void:
 	if _shades.has(key):
 		_shades[key].queue_free()
 		_shades.erase(key)
+	if interiors:
+		interiors.remove_chunk(key)
 	_chunks.erase(key)

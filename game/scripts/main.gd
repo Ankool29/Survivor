@@ -268,7 +268,7 @@ func _process(delta: float) -> void:
 func _tick_survival(delta: float) -> void:
 	var cell := player.cell()
 	surv.running = player.moving and player._running_now
-	surv.indoor = world.flags_at(cell) & WorldGen.F_ROOF != 0
+	surv.indoor = _shelter() >= 2
 	surv.near_fire = actions.near_fire(player.position).x >= 0
 	surv.sheltered = actions.near_structure(player.position, "abri").x >= 0
 	surv.wading = zone.is_water(cell.x, cell.y)
@@ -315,8 +315,27 @@ func _tick_survival(delta: float) -> void:
 			(sleep_overlay.get_node("Texte") as Label).text = "Tu dors…  %02d:%02d" % [int(surv.hour()), int(fmod(surv.hour(), 1.0) * 60)]
 
 
-## Toit du bâtiment où l'on entre : masqué tant qu'on est dedans.
+## Abri du joueur : 0 dehors, 1 dans un bâtiment sans toit, 2 sous un toit intact.
+func _shelter() -> int:
+	if world.interiors:
+		var pr := world.interiors.plan_at(player.position + Vector2(0, -2))
+		if pr.is_empty() or int(pr[1]) < 0:
+			return 0
+		return 2 if (pr[0] as BuildingPlan).state == 0 else 1
+	var f := world.flags_at(player.cell())
+	if f & WorldGen.F_ROOF:
+		return 2
+	return 1 if f & WorldGen.F_INDOOR else 0
+
+
+## Toit du bâtiment où l'on entre : masqué tant qu'on est dedans
+## (bâtiments détaillés : on abaisse aussi les murs devant le joueur).
 func _update_roof() -> void:
+	if world.interiors:
+		var pr := world.interiors.plan_at(player.position + Vector2(0, -2))
+		var pid := (pr[0] as BuildingPlan).id if not pr.is_empty() else -1
+		world.interiors.set_inside(pid, player.position.y)
+		return
 	var cell := player.cell()
 	var indoor := world.flags_at(cell) & WorldGen.F_INDOOR != 0
 	if indoor:
@@ -361,7 +380,73 @@ func _action_label() -> String:
 	var pk := fauna.pickup_near(player.position)
 	if not pk.is_empty():
 		return "Ramasser : " + Items.name_of(pk["id"]).to_lower()
+	if world.interiors:
+		var d := world.interiors.door_ahead(player.position, player.facing)
+		if not d.is_empty():
+			return "Fermer la porte" if d["open"] else "Ouvrir la porte"
+		var f := world.interiors.furniture_ahead(player.position, player.facing)
+		if not f.is_empty() and f["f"]["loot"]:
+			var k := "m%d_%d" % [(f["plan"] as BuildingPlan).id, f["idx"]]
+			return ("Ouvrir : " if mods.is_searched_key(k) else "Fouiller : ") + furniture_name(String(f["f"]["t"]))
 	return actions.label_for(_target, player.position)
+
+
+const FURN_NAMES := {
+	"meuble_entree": "meuble d'entrée", "buffet": "buffet", "etagere_livres": "bibliothèque", "placard": "placard",
+	"frigo": "frigo", "armoire": "armoire", "commode": "commode", "meuble_sdb": "armoire à pharmacie",
+	"etabli": "établi", "etageres": "étagères", "cartons": "cartons", "bureau": "bureau",
+	"armoire_bureau": "armoire de bureau", "comptoir": "comptoir", "rayonnage": "rayonnage", "auge": "auge",
+	"foin": "botte de foin", "palette": "palette", "cuisiniere": "cuisinière",
+}
+
+
+static func furniture_name(t: String) -> String:
+	return FURN_NAMES.get(t, t)
+
+
+## Portes et meubles des bâtiments détaillés.
+func _interior_action(label: String) -> bool:
+	if world.interiors == null:
+		return false
+	if label == "Ouvrir la porte" or label == "Fermer la porte":
+		var d := world.interiors.door_ahead(player.position, player.facing)
+		if not d.is_empty():
+			world.interiors.toggle_door(d)
+		return true
+	if label.begins_with("Fouiller : ") or label.begins_with("Ouvrir : "):
+		var f := world.interiors.furniture_ahead(player.position, player.facing)
+		if f.is_empty():
+			return true
+		var p: BuildingPlan = f["plan"]
+		var k := "m%d_%d" % [p.id, f["idx"]]
+		if not mods.is_searched_key(k):
+			surv.fouilles += 1
+			var content := Inventory.new(12)
+			var table := _furniture_table(p, String(f["f"]["t"]))
+			var loot := Loot.roll(table, Vector2i(p.id, int(f["idx"])), surv.seed_value)
+			for id in loot:
+				content.add(id, int(loot[id]))
+			for st in content.slots:
+				if st.has("usure") and Items.info(st["id"]).has("emplacement"):
+					st["usure"] = maxi(1, int(float(st["usure"]) * randf_range(0.35, 0.9)))
+			mods.mark_searched_key(k, content.to_data())
+			player.play_action("ramasser")
+		var title := furniture_name(String(f["f"]["t"]))
+		_open_container(mods.content_of_key(k), title.substr(0, 1).to_upper() + title.substr(1),
+			func(data): mods.mark_searched_key(k, data))
+		return true
+	return false
+
+
+## Table de butin d'un meuble : selon le meuble, et le commerce pour les rayons.
+func _furniture_table(p: BuildingPlan, t: String) -> String:
+	var table := String(BuildingPlan.LOOT.get(t, "maison"))
+	if table == "vente":
+		match p.kind:
+			"pharmacie": return "pharmacie"
+			"quincaillerie", "garage", "station_service": return "garage"
+			_: return "magasin"
+	return table
 
 
 ## Fait passer du temps de jeu (dépecer, cuire, pêcher…).
@@ -510,6 +595,9 @@ func _on_action() -> void:
 	if surv.dead or surv.sleeping:
 		return
 	var label := _action_label()
+	if _interior_action(label):
+		_action_timer = 0.0
+		return
 	if _fauna_action(label):
 		_action_timer = 0.0
 		return
@@ -542,9 +630,9 @@ func _on_sleep_button() -> void:
 	var q := 0.6
 	if actions.near_structure(player.position, "abri").x >= 0:
 		q = 1.0
-	elif world.flags_at(player.cell()) & WorldGen.F_ROOF:
+	elif _shelter() == 2:
 		q = 0.9
-	elif world.flags_at(player.cell()) & WorldGen.F_INDOOR:
+	elif _shelter() == 1:
 		q = 0.7
 	_sleep(q)
 
